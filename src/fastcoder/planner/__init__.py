@@ -6,7 +6,7 @@ import json
 import re
 import structlog
 from collections import deque, defaultdict
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from fastcoder.types.codebase import ProjectProfile
 from fastcoder.types.errors import ErrorContext
@@ -38,15 +38,21 @@ class Planner:
         self,
         llm_complete: Callable,
         codebase_query: Optional[Callable] = None,
+        graphify_provider: Optional[Any] = None,
     ):
         """Initialize the planner.
 
         Args:
             llm_complete: Async function for LLM completion
             codebase_query: Optional callable to query codebase structure
+            graphify_provider: Optional GraphifyProvider for community-aware
+                task decomposition hints. When provided and available, the
+                planner will inject a "module landscape hint" into the
+                planning prompt.
         """
         self.llm_complete = llm_complete
         self.codebase_query = codebase_query
+        self.graphify_provider = graphify_provider
         self.logger = structlog.get_logger(f"{__name__}.{self.__class__.__name__}")
 
     async def create_plan(
@@ -315,6 +321,18 @@ Project Context:
 - Test Framework: {project_profile.test_framework}
 - Naming: {project_profile.naming_conventions}"""
 
+        # Optional: graphify community hint for community-aware decomposition.
+        graphify_hint = ""
+        if self.graphify_provider is not None:
+            try:
+                hint = self.graphify_provider.community_hint(
+                    f"{spec.title} {spec.description}"
+                )
+                if hint:
+                    graphify_hint = f"\n\n{hint}"
+            except Exception as e:  # pragma: no cover — defensive
+                self.logger.debug("graphify community_hint failed", error=str(e))
+
         user_message = f"""Story: {spec.title}
 Type: {spec.story_type.value}
 Complexity: {spec.complexity_score}/10
@@ -328,7 +346,7 @@ Acceptance Criteria:
 Dependencies:
 {deps_text if deps_text else "  (none identified)"}
 
-Generate a task list to implement this story.{project_context}"""
+Generate a task list to implement this story.{project_context}{graphify_hint}"""
 
         return CompletionRequest(
             model="",  # Router will fill this

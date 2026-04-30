@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from fastcoder.types.codebase import ProjectProfile
 from fastcoder.types.llm import CompletionResponse, Message
@@ -15,14 +15,23 @@ from fastcoder.types.task import FileChange, ReviewIssue, ReviewReport
 class CodeReviewer:
     """Reviews code for security, performance, correctness, and style."""
 
-    def __init__(self, llm_complete: Callable[[list[Message], dict], CompletionResponse]) -> None:
+    def __init__(
+        self,
+        llm_complete: Callable[[list[Message], dict], CompletionResponse],
+        graphify_provider: Optional[Any] = None,
+    ) -> None:
         """Initialize the code reviewer.
 
         Args:
             llm_complete: Async callable that takes messages and metadata (should be different
                          provider from generator for fresh perspective)
+            graphify_provider: Optional GraphifyProvider for blast-radius
+                analysis. When provided and available, the reviewer will
+                prepend a high-degree-node warning to the review prompt
+                whenever the changes touch core abstractions in the graph.
         """
         self.llm_complete = llm_complete
+        self.graphify_provider = graphify_provider
 
     async def review(
         self,
@@ -98,6 +107,17 @@ class CodeReviewer:
         if profile.import_style:
             standards_section += f"**Import Style:** {profile.import_style}\n"
 
+        # Optional: graphify blast-radius warning for high-impact changes.
+        blast_section = ""
+        if self.graphify_provider is not None:
+            try:
+                paths = [c.file_path for c in changes if getattr(c, "file_path", None)]
+                blast = self.graphify_provider.blast_radius(paths)
+                if blast:
+                    blast_section = f"\n## Risk Signal\n{blast}\n"
+            except Exception:  # pragma: no cover — defensive
+                blast_section = ""
+
         prompt = f"""Perform a comprehensive code review of the following changes.
 
 ## Story
@@ -109,7 +129,7 @@ class CodeReviewer:
 
 {criteria_section}
 
-{standards_section}
+{standards_section}{blast_section}
 
 ## Review Checklist
 Review the code for:

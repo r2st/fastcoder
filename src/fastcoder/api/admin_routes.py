@@ -743,12 +743,72 @@ def create_admin_router(config_holder: dict) -> APIRouter:
             config.graphify = GraphifyConfig(**graphify_dict)
 
             _persist_config_non_secret(config)
-            return config.graphify.model_dump()
+
+            # Sync git hook state to match the new config (best-effort).
+            try:
+                from fastcoder.context.graphify_provider import GraphifyProvider
+
+                provider = GraphifyProvider(config.graphify, config.project.project_dir)
+                hook_status = provider.sync_hook_state()
+            except Exception:
+                hook_status = "unknown"
+
+            return {**config.graphify.model_dump(), "hook_status": hook_status}
 
         except HTTPException:
             raise
         except ValueError as e:
             raise HTTPException(status_code=400, detail=f"Invalid config: {str(e)}")
+
+    # POST /config/graphify/enrich - run semantic enrichment with budget guard
+    @router.post("/config/graphify/enrich", response_model=dict)
+    async def enrich_graphify(body: dict | None = None) -> dict:
+        """Trigger LLM-driven semantic enrichment of the graphify graph.
+
+        Stops automatically when ``semantic_max_input_tokens`` (or the
+        ``max_input_tokens`` body override) is exhausted. Returns a
+        summary with token spend so the caller can decide whether to
+        continue.
+
+        Body (all optional):
+            {"max_input_tokens": <int>}
+        """
+        config = config_holder.get("config")
+        if not config:
+            raise HTTPException(status_code=500, detail="Config not initialized")
+        if not config.graphify.enabled:
+            raise HTTPException(status_code=400, detail="Graphify is not enabled")
+        if not config.graphify.semantic_extraction:
+            raise HTTPException(
+                status_code=400,
+                detail="semantic_extraction is disabled in Graphify config",
+            )
+
+        llm_complete = config_holder.get("llm_complete")
+        if llm_complete is None:
+            raise HTTPException(
+                status_code=503,
+                detail="LLM router not wired into admin holder; cannot enrich",
+            )
+
+        try:
+            from fastcoder.context.graphify_provider import GraphifyProvider
+        except ImportError:
+            raise HTTPException(status_code=500, detail="GraphifyProvider unavailable")
+
+        provider = GraphifyProvider(config.graphify, config.project.project_dir)
+        body = body or {}
+        max_tokens = body.get("max_input_tokens")
+        # Run enrichment in a worker thread — it does sync I/O and we
+        # don't want to block the event loop.
+        import asyncio
+
+        loop = asyncio.get_event_loop()
+        summary = await loop.run_in_executor(
+            None,
+            lambda: provider.enrich_semantic(llm_complete, max_input_tokens=max_tokens),
+        )
+        return summary
 
     # ── Secure API Key Management ──
 

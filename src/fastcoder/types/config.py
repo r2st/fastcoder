@@ -150,6 +150,11 @@ class GraphifyConfig(BaseModel):
     query_token_budget: int = 2000
     """Max tokens returned per context query against the graph."""
 
+    semantic_max_input_tokens: int = 200_000
+    """Hard cap on total LLM input tokens spent on semantic enrichment.
+    Enrichment stops as soon as this budget is exhausted, even mid-corpus.
+    Only consulted when semantic_extraction is True."""
+
     cache_dir: str = ".fastcoder/graphify"
     """Where to persist graph.json, manifest, and incremental cache."""
 

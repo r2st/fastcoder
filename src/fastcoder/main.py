@@ -110,9 +110,30 @@ def _initialize_components(
         logger.warning("codebase_intelligence_initialization_failed", error=str(e))
         components["codebase_intelligence"] = None
 
-    # 4. Initialize Context Manager
+    # 4. Initialize Context Manager (and shared GraphifyProvider)
     try:
         logger.info("initializing_context_manager")
+        # Shared graphify provider so the graph is built/queried once
+        # across ContextManager, Planner, and Reviewer. Cheap to construct
+        # — does no work until is_available() / query_context() is called.
+        graphify_provider = None
+        if config.graphify.enabled:
+            try:
+                from fastcoder.context.graphify_provider import GraphifyProvider
+
+                graphify_provider = GraphifyProvider(
+                    config.graphify, config.project.project_dir
+                )
+                # Reflect the auto_rebuild_on_commit toggle on disk too.
+                try:
+                    graphify_provider.sync_hook_state()
+                except Exception as e:  # pragma: no cover — defensive
+                    logger.debug("graphify hook sync failed", error=str(e))
+            except Exception as e:
+                logger.warning("graphify_provider_init_failed", error=str(e))
+                graphify_provider = None
+        components["graphify_provider"] = graphify_provider
+
         context_manager = ContextManager(
             graphify_config=config.graphify,
             project_dir=config.project.project_dir,
@@ -125,6 +146,7 @@ def _initialize_components(
     except Exception as e:
         logger.warning("context_manager_initialization_failed", error=str(e))
         components["context_manager"] = None
+        components.setdefault("graphify_provider", None)
 
     # 5. Initialize Analysis Components (Analyzer, Planner, Generator, etc)
     # These all need an llm_complete callable from the router
@@ -150,6 +172,7 @@ def _initialize_components(
         planner = Planner(
             llm_complete=llm_router.complete,
             codebase_query=codebase_query,
+            graphify_provider=components.get("graphify_provider"),
         )
         components["planner"] = planner
         logger.info("planner_initialized")
@@ -180,7 +203,10 @@ def _initialize_components(
     # 5e. CodeReviewer
     try:
         logger.info("initializing_code_reviewer")
-        reviewer = CodeReviewer(llm_complete=llm_router.complete)
+        reviewer = CodeReviewer(
+            llm_complete=llm_router.complete,
+            graphify_provider=components.get("graphify_provider"),
+        )
         components["reviewer"] = reviewer
         logger.info("code_reviewer_initialized")
     except Exception as e:
@@ -460,7 +486,13 @@ async def start_agent(config_overrides: Optional[dict] = None) -> None:
 
     # 11. Create FastAPI app
     story_store: dict[str, Story] = {}
-    config_holder: dict = {"config": config}
+    config_holder: dict = {
+        "config": config,
+        # Expose the LLM router's complete() callable so admin endpoints
+        # (e.g. /config/graphify/enrich) can drive token-budgeted LLM
+        # work without leaking the full router instance.
+        "llm_complete": getattr(llm_router, "complete", None) if llm_router else None,
+    }
     activity_log: list = []
 
     # Initialize approval gate manager
