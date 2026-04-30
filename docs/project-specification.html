@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autonomous Dev Agent — Project Specification</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0b1120;--surface:#111827;--card:#1e293b;--border:#334155;
+  --text:#e2e8f0;--muted:#94a3b8;--dim:#64748b;
+  --brand:#3b82f6;--brand-light:#60a5fa;--brand-bg:rgba(59,130,246,.08);
+  --green:#10b981;--green-bg:rgba(16,185,129,.1);
+  --amber:#f59e0b;--amber-bg:rgba(245,158,11,.1);
+  --red:#ef4444;--red-bg:rgba(239,68,68,.1);
+  --cyan:#06b6d4;--purple:#a78bfa;
+  --radius:8px;--radius-lg:12px;
+}
+html{scroll-behavior:smooth;font-size:16px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.7}
+a{color:var(--brand-light);text-decoration:none;transition:color .2s}
+a:hover{color:var(--cyan)}
+
+/* ─── Sidebar Nav ─── */
+.sidebar{position:fixed;top:0;left:0;width:280px;height:100vh;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;z-index:100;padding:1.5rem 0;transition:transform .3s}
+.sidebar-brand{padding:0 1.25rem 1.25rem;border-bottom:1px solid var(--border);margin-bottom:.75rem}
+.sidebar-brand h2{font-size:1.1rem;color:var(--brand-light);font-weight:700;letter-spacing:-.02em}
+.sidebar-brand p{font-size:.75rem;color:var(--muted);margin-top:.25rem}
+.nav-group{padding:.5rem 0}
+.nav-group-title{font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);padding:.5rem 1.25rem .25rem;font-weight:600}
+.nav-link{display:flex;align-items:center;gap:.5rem;padding:.45rem 1.25rem;font-size:.85rem;color:var(--muted);transition:all .15s;border-left:3px solid transparent;cursor:pointer}
+.nav-link:hover,.nav-link.active{color:var(--text);background:var(--brand-bg);border-left-color:var(--brand)}
+.nav-link .icon{font-size:.9rem;width:1.25rem;text-align:center}
+.nav-link .badge{margin-left:auto;font-size:.65rem;padding:.1rem .4rem;border-radius:10px;font-weight:600}
+.badge-new{background:var(--green-bg);color:var(--green)}
+.badge-count{background:var(--brand-bg);color:var(--brand-light)}
+
+/* ─── Main Content ─── */
+.main{margin-left:280px;min-height:100vh}
+.content{max-width:960px;margin:0 auto;padding:2.5rem 2rem 4rem}
+
+/* ─── Mobile toggle ─── */
+.menu-toggle{display:none;position:fixed;top:1rem;left:1rem;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:.5rem .75rem;color:var(--text);font-size:1.2rem;cursor:pointer}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99}
+
+/* ─── Hero ─── */
+.hero{padding:3rem 0 2rem;border-bottom:1px solid var(--border);margin-bottom:2.5rem}
+.hero h1{font-size:2.2rem;font-weight:800;letter-spacing:-.03em;line-height:1.2;background:linear-gradient(135deg,var(--brand-light),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero p{color:var(--muted);font-size:1.05rem;margin-top:.75rem;max-width:700px}
+.hero-meta{display:flex;flex-wrap:wrap;gap:1rem;margin-top:1.25rem}
+.hero-stat{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:.6rem 1rem;font-size:.8rem}
+.hero-stat strong{color:var(--brand-light);font-size:1.1rem;display:block}
+
+/* ─── Section ─── */
+.section{margin-bottom:3rem}
+.section-anchor{scroll-margin-top:2rem}
+.section>h2{font-size:1.6rem;font-weight:700;color:var(--text);margin-bottom:.25rem;display:flex;align-items:center;gap:.5rem}
+.section>h2 .sec-icon{color:var(--brand-light);font-size:1.3rem}
+.section>p.lead{color:var(--muted);font-size:.95rem;margin-bottom:1.5rem}
+h3{font-size:1.15rem;font-weight:600;color:var(--cyan);margin:1.75rem 0 .75rem;padding-top:.5rem;border-top:1px solid var(--border)}
+h4{font-size:1rem;font-weight:600;color:var(--green);margin:1.25rem 0 .5rem}
+
+/* ─── Cards ─── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1rem;transition:border-color .2s}
+.card:hover{border-color:var(--brand)}
+.card-header{display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem}
+.card-header .card-id{font-size:.7rem;font-weight:700;color:var(--bg);background:var(--brand);padding:.15rem .5rem;border-radius:4px}
+.card-header h4{margin:0;color:var(--text);font-size:1rem}
+
+/* ─── Tables ─── */
+.table-wrap{overflow-x:auto;margin:1rem 0;border-radius:var(--radius);border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+th{background:var(--surface);color:var(--brand-light);padding:.7rem .75rem;text-align:left;font-weight:600;white-space:nowrap;border-bottom:2px solid var(--border);position:sticky;top:0}
+td{padding:.6rem .75rem;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(59,130,246,.04)}
+
+/* ─── Tags ─── */
+.tag{display:inline-block;font-size:.65rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;text-transform:uppercase;letter-spacing:.04em;vertical-align:middle}
+.tag-new{background:var(--green-bg);color:var(--green)}
+.tag-updated{background:var(--amber-bg);color:var(--amber)}
+.tag-impl{background:var(--green-bg);color:var(--green)}
+.tag-partial{background:var(--amber-bg);color:var(--amber)}
+.tag-planned{background:var(--red-bg);color:var(--red)}
+.tag-critical{background:var(--red-bg);color:var(--red)}
+.tag-high{background:var(--amber-bg);color:var(--amber)}
+.tag-medium{background:var(--brand-bg);color:var(--brand-light)}
+.tag-low{background:rgba(148,163,184,.15);color:var(--muted)}
+
+/* ─── Callout ─── */
+.callout{border-left:4px solid var(--brand);background:var(--brand-bg);border-radius:0 var(--radius) var(--radius) 0;padding:1rem 1.25rem;margin:1rem 0;font-size:.9rem}
+.callout.green{border-color:var(--green);background:var(--green-bg)}
+.callout.amber{border-color:var(--amber);background:var(--amber-bg)}
+.callout.red{border-color:var(--red);background:var(--red-bg)}
+.callout strong{display:block;margin-bottom:.25rem;font-size:.85rem}
+
+/* ─── Pipeline ─── */
+.pipeline{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin:1rem 0}
+.pipe-box{padding:.45rem .8rem;border-radius:6px;font-size:.75rem;font-weight:600;border:2px solid;text-align:center}
+.pipe-done{background:rgba(16,185,129,.15);border-color:var(--green);color:var(--green)}
+.pipe-partial{background:rgba(245,158,11,.15);border-color:var(--amber);color:var(--amber)}
+.pipe-todo{background:rgba(239,68,68,.15);border-color:var(--red);color:var(--red)}
+.pipe-arrow{color:var(--dim);font-size:1.1rem}
+
+/* ─── Lists ─── */
+ul.spec,ol.spec{padding-left:1.25rem;margin:.5rem 0}
+ul.spec li,ol.spec li{margin-bottom:.4rem;color:var(--text);font-size:.9rem;line-height:1.6}
+ul.spec li::marker{color:var(--brand-light)}
+
+/* ─── Story Card ─── */
+.story{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:.75rem;border-left:4px solid var(--brand)}
+.story-id{font-size:.7rem;font-weight:700;color:var(--brand-light)}
+.story h5{font-size:.9rem;color:var(--text);margin:.25rem 0 .5rem}
+.story p{font-size:.82rem;color:var(--muted);margin:0}
+.story .ac{font-size:.8rem;color:var(--muted);margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border)}
+.story .ac strong{color:var(--cyan);font-size:.75rem;text-transform:uppercase;letter-spacing:.04em}
+
+/* ─── Tracker Grid ─── */
+.tracker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.75rem;margin:1rem 0}
+.tracker-item{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;position:relative;overflow:hidden}
+.tracker-item::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.tracker-item.done::before{background:var(--green)}
+.tracker-item.partial::before{background:var(--amber)}
+.tracker-item.todo::before{background:var(--red)}
+.tracker-item h5{font-size:.85rem;color:var(--text);margin-bottom:.35rem}
+.tracker-item .loc{font-size:.75rem;color:var(--dim)}
+.tracker-item .desc{font-size:.8rem;color:var(--muted);margin-top:.35rem}
+.progress-bar{height:4px;background:var(--border);border-radius:2px;margin-top:.5rem;overflow:hidden}
+.progress-bar .fill{height:100%;border-radius:2px;transition:width .3s}
+.fill-green{background:var(--green)}
+.fill-amber{background:var(--amber)}
+
+/* ─── Stats Row ─── */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem;margin:1.5rem 0}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;text-align:center}
+.stat-card .num{font-size:1.6rem;font-weight:800;color:var(--brand-light);line-height:1}
+.stat-card .label{font-size:.72rem;color:var(--muted);margin-top:.25rem;text-transform:uppercase;letter-spacing:.04em}
+
+/* ─── Responsive ─── */
+@media(max-width:900px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .overlay.open{display:block}
+  .menu-toggle{display:block}
+  .main{margin-left:0}
+  .content{padding:1.5rem 1rem 3rem}
+  .hero h1{font-size:1.6rem}
+  .hero-meta{gap:.5rem}
+  .stats-row{grid-template-columns:repeat(2,1fr)}
+  .tracker-grid{grid-template-columns:1fr}
+  table{font-size:.78rem}
+  th,td{padding:.5rem}
+}
+@media(max-width:480px){
+  .hero h1{font-size:1.3rem}
+  .stats-row{grid-template-columns:1fr 1fr}
+  .hero-stat{padding:.4rem .75rem}
+}
+</style>
+</head>
+<body>
+
+<!-- Mobile Menu Toggle -->
+<button class="menu-toggle" onclick="toggleSidebar()" aria-label="Menu">&#9776;</button>
+<div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+<!-- Sidebar Navigation -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <h2>Auto Dev Agent</h2>
+    <p>Project Specification v4.1</p>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-title">Overview</div>
+    <a class="nav-link" href="#hero"><span class="icon">&#127968;</span> Home</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-title">Requirements</div>
+    <a class="nav-link" href="#business"><span class="icon">&#128188;</span> Business Requirements</a>
+    <a class="nav-link" href="#technical"><span class="icon">&#9881;</span> Technical Requirements</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-title">Stories & Progress</div>
+    <a class="nav-link" href="#stories"><span class="icon">&#128221;</span> User Stories <span class="badge badge-count">24</span></a>
+    <a class="nav-link" href="#tracker"><span class="icon">&#128202;</span> Implementation Tracker</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-title">Operations</div>
+    <a class="nav-link" href="#security"><span class="icon">&#128274;</span> Security</a>
+    <a class="nav-link" href="#deployment"><span class="icon">&#128640;</span> Deployment</a>
+    <a class="nav-link" href="#ux"><span class="icon">&#127919;</span> Usability</a>
+  </div>
+</nav>
+
+<div class="main">
+<div class="content">
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- HERO -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section class="hero section-anchor" id="hero">
+  <h1>Autonomous Software Development Agent</h1>
+  <p>Accepts user stories and autonomously performs analysis, planning, code generation, testing, deployment, verification, and self-improvement on existing production codebases.</p>
+  <div class="hero-meta">
+    <div class="hero-stat"><strong>16,400+</strong> Lines of Python</div>
+    <div class="hero-stat"><strong>60+</strong> Source Files</div>
+    <div class="hero-stat"><strong>13</strong> Core Components</div>
+    <div class="hero-stat"><strong>4</strong> LLM Providers</div>
+    <div class="hero-stat"><strong>10</strong> Pipeline States</div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- 1. BUSINESS REQUIREMENTS -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section class="section section-anchor" id="business">
+  <h2><span class="sec-icon">&#128188;</span> Business Requirements</h2>
+  <p class="lead">Market-driven requirements derived from DORA AI Tensions report, METR SWE-bench maintainer study, and competitive analysis of GitHub Copilot, Lovable, Claude Code, and Cursor.</p>
+
+  <h3>BR-1: Value Proposition</h3>
+  <div class="callout">
+    <strong>Core Thesis</strong>
+    The product is a <em>configurable autonomy + evidence system</em> — not a better model. It spans developer productivity, testing automation, and DevOps/ALM governance as a convergence product.
+  </div>
+
+  <ul class="spec">
+    <li><strong>BR-1.1:</strong> Accept a natural-language user story and produce a working, tested, deployed, merge-ready pull request with full evidence bundle — without human intervention for low-risk changes.</li>
+    <li><strong>BR-1.2:</strong> Operate on existing production codebases (multi-year, multi-repo), not just greenfield projects. Lovable's inability to import existing repos is the competitive gap this fills.</li>
+    <li><strong>BR-1.3:</strong> Reduce the "verification tax" identified by DORA — time saved in code creation currently re-allocated to auditing rather than shipping net-new value.</li>
+    <li><strong>BR-1.4:</strong> Achieve a PR merge rate ≥75% by maintainers, exceeding the 50% baseline from the METR SWE-bench study where AI PRs that passed automated grading were still rejected by maintainers.</li>
+    <li><strong>BR-1.5:</strong> Enterprise buyers purchase controlled speed, not raw speed. Verification and governance are first-class concerns, not afterthoughts.</li>
+  </ul>
+
+  <h3>BR-2: Target Market &amp; Sizing</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Market Segment</th><th>2025 Size</th><th>2030 Forecast</th><th>CAGR</th></tr>
+    <tr><td>AI Code Tools</td><td>$7.37B</td><td>$23.97B</td><td>26.6%</td></tr>
+    <tr><td>Automation Testing</td><td>$25.43B (2022)</td><td>$92.45B</td><td>~18%</td></tr>
+    <tr><td>DevOps</td><td>$11.3B (2022)</td><td>$37.25B</td><td>~16%</td></tr>
+    <tr><td>ALM (Application Lifecycle)</td><td>$3.83B (2023)</td><td>$7.72B</td><td>~10%</td></tr>
+  </table></div>
+  <p style="font-size:.85rem;color:var(--muted)">Global developer population: ~47M (SlashData 2025), ~20.8M professional developers (JetBrains 2025).</p>
+
+  <h3>BR-3: Target Customers</h3>
+  <ul class="spec">
+    <li><strong>BR-3.1:</strong> Teams with existing, high-change repos with high verification cost (payments, auth, infra-as-code, data pipelines).</li>
+    <li><strong>BR-3.2:</strong> Teams already using CI gates but drowning in failures and review load — the DORA verification overhead segment.</li>
+    <li><strong>BR-3.3:</strong> Security-conscious organizations where AI-generated code risk is unacceptable without enforceable scanning and audit.</li>
+    <li><strong>BR-3.4:</strong> Enterprises with multi-repo microservice architectures needing coordinated cross-repo changes (GitHub Copilot Agent limitation).</li>
+  </ul>
+
+  <h3>BR-4: Competitive Differentiation</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Capability</th><th>Lovable</th><th>Claude Code</th><th>Copilot Agent</th><th>Cursor</th><th style="color:var(--green)">This Agent</th></tr>
+    <tr><td>Existing repo import</td><td>&#10007;</td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td><td style="color:var(--green)">&#10003; + multi-repo</td></tr>
+    <tr><td>Closed-loop testing</td><td>On request</td><td>&#10003;</td><td>&#10003;</td><td>&#10007;</td><td style="color:var(--green)">Enforced by default</td></tr>
+    <tr><td>Quality gates</td><td>None</td><td>None</td><td>CI hooks</td><td>None</td><td style="color:var(--green)">11 configurable gates</td></tr>
+    <tr><td>Security scanning</td><td>None</td><td>None</td><td>Via CI</td><td>None</td><td style="color:var(--green)">Built-in SAST</td></tr>
+    <tr><td>Evidence bundles</td><td>None</td><td>None</td><td>Partial</td><td>None</td><td style="color:var(--green)">Full per-PR</td></tr>
+    <tr><td>Multi-model routing</td><td>&#10007;</td><td>&#10007;</td><td>&#10003;</td><td>&#10003;</td><td style="color:var(--green)">&#10003; + cost budget</td></tr>
+    <tr><td>Post-mortem learning</td><td>None</td><td>Auto-memory</td><td>Memory (preview)</td><td>None</td><td style="color:var(--green)">5-tier + feedback</td></tr>
+    <tr><td>Cross-repo changes</td><td>&#10007;</td><td>&#10007;</td><td>&#10007;</td><td>&#10007;</td><td style="color:var(--green)">&#10003;</td></tr>
+    <tr><td>Configurable autonomy</td><td>None</td><td>Basic</td><td>Admin config</td><td>None</td><td style="color:var(--green)">Policy-based gates</td></tr>
+    <tr><td>Self-hosted option</td><td>&#10007;</td><td>&#10003;</td><td>&#10007;</td><td>&#10007;</td><td style="color:var(--green)">&#10003;</td></tr>
+  </table></div>
+
+  <h3>BR-5: Success Metrics</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Metric</th><th>Target</th><th>Research Basis</th></tr>
+    <tr><td>PR merge rate by maintainers</td><td>≥75% (vs METR baseline 50%)</td><td>METR SWE-bench maintainer study</td></tr>
+    <tr><td>Quality gate pass rate (1st attempt)</td><td>≥60%</td><td>Reduce verification tax (DORA)</td></tr>
+    <tr><td>Mean iterations to convergence</td><td>≤3 iterations</td><td>System design v3.1 target</td></tr>
+    <tr><td>Security vulnerability rate</td><td>&lt;5% of generated code</td><td>Copilot empirical security study</td></tr>
+    <tr><td>Time: story to merge-ready PR</td><td>&lt;30 min (median)</td><td>Competitive with human developers</td></tr>
+    <tr><td>Cost per story (median)</td><td>&lt;$3.00</td><td>Cost optimization engine target</td></tr>
+    <tr><td>Post-mortem learning retention</td><td>≥80% fewer same-class rejections</td><td>Feedback loop effectiveness</td></tr>
+    <tr><td>Codebase onboarding time</td><td>&lt;5 min for full index</td><td>Import workflow requirement</td></tr>
+  </table></div>
+
+  <h3>BR-6: Competitive Moat</h3>
+  <ul class="spec">
+    <li><strong>BR-6.1: Repo-specific reliability curves</strong> — Measured success across gates and time. Model capability will commoditize; accumulated project-specific reliability data will not.</li>
+    <li><strong>BR-6.2: Change-safety policy libraries</strong> — Industry and regulatory templates (HIPAA, SOC2, PCI-DSS) for quality gate configurations.</li>
+    <li><strong>BR-6.3: High-quality integration surface</strong> — Deep CI/CD, test infra, secrets management integrations that take months to build and maintain.</li>
+    <li><strong>BR-6.4: Feedback-grounded learning loops</strong> — Turn reviewer input into reduced future toil, closing the METR "wouldn't merge" gap over time.</li>
+  </ul>
+</section>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- 2. TECHNICAL REQUIREMENTS -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section class="section section-anchor" id="technical">
+  <h2><span class="sec-icon">&#9881;</span> Technical Requirements</h2>
+  <p class="lead">Architecture, components, protocols, and quality enforcement specifications for the autonomous pipeline.</p>
+
+  <h3>TR-1: Orchestrator State Machine</h3>
+  <p style="font-size:.9rem;color:var(--text);margin-bottom:1rem">The core pipeline is a 10-state finite state machine that processes each user story through the full development lifecycle. The agent converges — it never just finishes.</p>
+  <div class="pipeline">
+    <div class="pipe-box pipe-done">RECEIVED</div><span class="pipe-arrow">→</span>
+    <div class="pipe-box pipe-done">ANALYZING</div><span class="pipe-arrow">→</span>
+    <div class="pipe-box pipe-done">PLANNING</div><span class="pipe-arrow">→</span>
+    <div class="pipe-box pipe-done">CODING</div><span class="pipe-arrow">→</span>
+    <div class="pipe-box pipe-done">REVIEWING</div><span class="pipe-arrow">→</span>
+    <div class="pipe-box pipe-done">TESTING</div><span class="pipe-arrow">→</span>
+    <div class="pipe-box pipe-done">DEPLOYING</div><span class="pipe-arrow">→</span>
+    <div class="pipe-box pipe-done">VERIFYING</div><span class="pipe-arrow">→</span>
+    <div class="pipe-box pipe-done">DONE</div>
+  </div>
+  <div class="callout green">
+    <strong>Loop-First Architecture</strong>
+    On failure at any stage, the orchestrator rolls back to the appropriate state with enriched context (error details, stack traces, previous attempts) and retries with progressive strategy escalation. Max 5 iterations with oscillation detection.
+  </div>
+
+  <ul class="spec">
+    <li><strong>TR-1.1:</strong> Convergence detection with SHA-256 fingerprinting of errors to detect oscillation (same error repeating).</li>
+    <li><strong>TR-1.2:</strong> Retry policy with exponential backoff, max 5 attempts, and progressive context enrichment at each attempt level.</li>
+    <li><strong>TR-1.3:</strong> Adapter layer bridging 13 component interfaces to the Orchestrator's Protocol definitions.</li>
+    <li><strong>TR-1.4:</strong> Story state persistence — full story state serializable for crash recovery and audit.</li>
+  </ul>
+
+  <h3>TR-2: Closed-Loop Quality Enforcement <span class="tag tag-new">NEW</span></h3>
+  <p style="font-size:.9rem;color:var(--text);margin-bottom:1rem">Quality gates are first-class policy objects, not hardcoded checks. Each gate produces structured evidence for merge decisions.</p>
+  <div class="table-wrap"><table>
+    <tr><th>Gate</th><th>Description</th><th>Default Threshold</th><th>Configurable</th></tr>
+    <tr><td>Lint</td><td>Code style and formatting checks</td><td>Zero errors</td><td>Yes — per-project</td></tr>
+    <tr><td>Type Check</td><td>Static type analysis (mypy, tsc)</td><td>Zero errors</td><td>Yes — strict/basic</td></tr>
+    <tr><td>Unit Tests</td><td>Unit test suite execution</td><td>≥80% coverage</td><td>Yes — min coverage %</td></tr>
+    <tr><td>Integration Tests</td><td>Cross-module integration tests</td><td>All passing</td><td>Yes — skip list</td></tr>
+    <tr><td>E2E Tests</td><td>End-to-end acceptance tests</td><td>All passing</td><td>Yes — scope</td></tr>
+    <tr><td>SAST</td><td>Static Application Security Testing</td><td>Zero high/critical</td><td>Yes — severity</td></tr>
+    <tr><td>Dependency Audit</td><td>Known vulnerability scanning</td><td>Zero critical CVEs</td><td>Yes — severity</td></tr>
+    <tr><td>Secret Detection</td><td>Detect leaked secrets/keys</td><td>Zero findings</td><td>No — always enforced</td></tr>
+    <tr><td>Coverage Delta</td><td>Coverage must not decrease</td><td>≥0% delta</td><td>Yes — threshold</td></tr>
+    <tr><td>Performance Budget</td><td>Bundle size / latency limits</td><td>Per-project</td><td>Yes — limits</td></tr>
+    <tr><td>Migration Safety</td><td>DB migration reversibility</td><td>All reversible</td><td>Yes — allow list</td></tr>
+  </table></div>
+
+  <h4>Evidence Bundle Generation</h4>
+  <p style="font-size:.9rem;color:var(--text);margin-bottom:.5rem">Every PR produced by the agent includes a structured evidence bundle:</p>
+  <ul class="spec">
+    <li><strong>Test Report:</strong> Pass/fail counts, coverage percentage, failure details with stack traces.</li>
+    <li><strong>SAST Report:</strong> Security scan results with severity classifications and CWE identifiers.</li>
+    <li><strong>Change Impact Analysis:</strong> Files changed, dependency graph impact, blast radius visualization.</li>
+    <li><strong>Acceptance Criteria Map:</strong> Each BDD criterion linked to its verifying test(s).</li>
+    <li><strong>Cost Summary:</strong> Tokens used, model calls, total cost for this story.</li>
+    <li><strong>Reviewer Checklist:</strong> Pre-filled checklist of what the agent verified vs. what needs human review.</li>
+  </ul>
+
+  <h3>TR-3: Codebase Intelligence Engine <span class="tag tag-updated">UPDATED</span></h3>
+  <div class="table-wrap"><table>
+    <tr><th>Index Layer</th><th>What It Captures</th><th>Use Case</th></tr>
+    <tr><td>AST Index</td><td>Abstract syntax trees for every source file</td><td>Signatures, hierarchies, APIs</td></tr>
+    <tr><td>Dependency Graph</td><td>Import relationships, module boundaries, circulars</td><td>Impact analysis across files</td></tr>
+    <tr><td>Semantic Embeddings</td><td>TF-IDF vector embeddings of code chunks</td><td>Natural language code search</td></tr>
+    <tr><td>Symbol Table</td><td>All exported symbols, types, locations, usage</td><td>Auto-import, collision avoidance</td></tr>
+    <tr><td>Convention Profile</td><td>Naming, structure, error handling, test patterns</td><td>Style-consistent generation</td></tr>
+    <tr><td>API Surface Map</td><td>HTTP endpoints, CLI commands, event handlers</td><td>External interface understanding</td></tr>
+    <tr><td>Ownership Map <span class="tag tag-new">NEW</span></td><td>CODEOWNERS, git blame, review frequency</td><td>Route approvals to correct humans</td></tr>
+    <tr><td>Build/Test Recipe <span class="tag tag-new">NEW</span></td><td>Build commands, test invocations, CI config</td><td>Deterministic build/test execution</td></tr>
+    <tr><td>Cross-Repo Index <span class="tag tag-new">NEW</span></td><td>Shared types, contracts, API schemas</td><td>Multi-repo change safety</td></tr>
+  </table></div>
+
+  <h4>BERT / Embedding Model Guidance <span class="tag tag-new">NEW</span></h4>
+  <div class="callout amber">
+    <strong>Decision</strong>
+    BERT-family models are <em>not required</em> for core implementation. The current baseline (AST + dependency graph + TF-IDF retrieval) is sufficient for initial production rollout.
+  </div>
+  <div class="table-wrap"><table>
+    <tr><th>Use Case</th><th>Need BERT-family Model?</th><th>Recommendation</th></tr>
+    <tr><td>Baseline story processing</td><td>No</td><td>Use existing retrieval pipeline to minimize infra and latency.</td></tr>
+    <tr><td>Semantic code retrieval quality lift</td><td>Optional</td><td>Add sentence-transformer style embeddings (e.g., MiniLM/BGE) when retrieval misses become material.</td></tr>
+    <tr><td>Result reranking for large repos</td><td>Optional</td><td>Add cross-encoder reranker only for top-K candidate refinement to control cost.</td></tr>
+    <tr><td>Air-gapped/on-prem optimization</td><td>Recommended (optional)</td><td>Run local embedding model to reduce cloud calls and improve privacy posture.</td></tr>
+  </table></div>
+  <ul class="spec">
+    <li><strong>TR-3.10:</strong> Keep TF-IDF as deterministic fallback path for reliability and low-resource environments.</li>
+    <li><strong>TR-3.11:</strong> Gate embedding rollout behind config flag (e.g., <code>semantic_retrieval_mode=tfidf|hybrid|embedding</code>).</li>
+    <li><strong>TR-3.12:</strong> Measure impact with retrieval precision/recall and PR merge-rate deltas before making embedding mode default.</li>
+  </ul>
+
+  <h3>TR-4: Configurable Autonomy Engine <span class="tag tag-new">NEW</span></h3>
+  <p style="font-size:.9rem;color:var(--text);margin-bottom:.5rem">Policy-based intervention points instead of all-or-nothing human-in-the-loop:</p>
+  <div class="table-wrap"><table>
+    <tr><th>Policy Rule</th><th>Trigger Condition</th><th>Action</th></tr>
+    <tr><td>Auto-Merge</td><td>All gates pass AND criticality &lt; threshold</td><td>Merge without human review</td></tr>
+    <tr><td>Review Required</td><td>Change touches infra/workflow/auth files</td><td>Pause for human approval</td></tr>
+    <tr><td>Security Sign-off</td><td>SAST findings &gt; 0 OR auth-related changes</td><td>Route to security reviewer</td></tr>
+    <tr><td>Budget Gate</td><td>Cost exceeds per-story or daily budget</td><td>Pause and notify operator</td></tr>
+    <tr><td>Ambiguity Gate</td><td>Analyzer detects unclear requirements</td><td>Request clarification</td></tr>
+    <tr><td>Criticality Escalation</td><td>Blast radius &gt; N files or core module</td><td>Require senior review</td></tr>
+  </table></div>
+
+  <h4>Approval Gates (7 configurable points)</h4>
+  <ul class="spec">
+    <li><strong>pre_code:</strong> Review execution plan before code generation begins.</li>
+    <li><strong>pre_deploy:</strong> Review changes and evidence bundle before deployment.</li>
+    <li><strong>pre_production:</strong> Additional approval for production (vs staging) deployment.</li>
+    <li><strong>budget_exceeded:</strong> Triggered when cost limits are hit.</li>
+    <li><strong>ambiguity_detected:</strong> Triggered when story analysis finds unclear requirements.</li>
+    <li><strong>blast_radius <span class="tag tag-new">NEW</span>:</strong> Change impact exceeds configured threshold.</li>
+    <li><strong>security_finding <span class="tag tag-new">NEW</span>:</strong> SAST detects finding above configured severity.</li>
+  </ul>
+
+  <h3>TR-5: Multi-Model Routing &amp; Cost Engine <span class="tag tag-updated">UPDATED</span></h3>
+  <div class="table-wrap"><table>
+    <tr><th>Task Purpose</th><th>Recommended Tier</th><th>Rationale</th><th>Fallback</th></tr>
+    <tr><td>Story Analysis</td><td>Mid-tier</td><td>Structured extraction</td><td>Top-tier</td></tr>
+    <tr><td>Planning</td><td>Top-tier</td><td>Deep reasoning required</td><td>Mid-tier + retry</td></tr>
+    <tr><td>Code Generation</td><td>Top-tier</td><td>Quality-critical</td><td>Mid-tier for simple</td></tr>
+    <tr><td>Test Generation</td><td>Mid-tier</td><td>Pattern-based</td><td>Top-tier for complex</td></tr>
+    <tr><td>Code Review</td><td>Top-tier (different provider)</td><td>Independent perspective</td><td>Same provider</td></tr>
+    <tr><td>Security Scan <span class="tag tag-new">NEW</span></td><td>Specialized SAST model</td><td>Domain expertise</td><td>Top-tier + SAST tool</td></tr>
+    <tr><td>Context Retrieval <span class="tag tag-new">NEW</span></td><td>Low-tier / Embeddings</td><td>High-volume, low-cost</td><td>Mid-tier</td></tr>
+    <tr><td>Error Diagnosis</td><td>Mid-tier</td><td>Pattern matching</td><td>Top-tier on retry 3+</td></tr>
+  </table></div>
+
+  <h4>Cost Budget Engine <span class="tag tag-new">NEW</span></h4>
+  <ul class="spec">
+    <li><strong>Per-story budget:</strong> Default $5.00, configurable. Agent pauses when exceeded.</li>
+    <li><strong>Per-day budget:</strong> Default $100.00. Prevents runaway costs from batch processing.</li>
+    <li><strong>Per-month budget:</strong> Default $2,000.00. Hard cap with admin notification.</li>
+    <li><strong>Cost-per-token tracking:</strong> Real-time cost accumulation across all model calls per story.</li>
+    <li><strong>SLA envelopes:</strong> Configurable max latency per task type with auto-fallback on timeout.</li>
+  </ul>
+
+  <h3>TR-6: Error Recovery &amp; Post-Mortem Learning <span class="tag tag-updated">UPDATED</span></h3>
+  <h4>Error Taxonomy (8 categories)</h4>
+  <ul class="spec">
+    <li>Syntax Error, Type Error, Import/Dependency Error, Logic Error, Runtime Error, Test Failure, Build Failure, Infrastructure Error</li>
+    <li>SHA-256 fingerprinting for oscillation detection; progressive context enrichment over 5 retry levels.</li>
+  </ul>
+
+  <h4>Post-Mortem Learning Loops <span class="tag tag-new">NEW</span></h4>
+  <ol class="spec">
+    <li><strong>Classify failure mode:</strong> Map to error taxonomy and determine root cause category.</li>
+    <li><strong>Update repo heuristics:</strong> If convention violation caused failure, update ProjectProfile.</li>
+    <li><strong>Adjust future gates:</strong> If a gate consistently fails for a pattern, pre-emptively include that check.</li>
+    <li><strong>Store as memory entry:</strong> Add to Memory Store with effectiveness score for RAG retrieval.</li>
+    <li><strong>Reviewer feedback integration:</strong> Capture human rejection reasons and train agent to pre-empt them.</li>
+  </ol>
+
+  <h4>Five-Tier Memory Architecture</h4>
+  <div class="table-wrap"><table>
+    <tr><th>Tier</th><th>Purpose</th><th>Lifecycle</th></tr>
+    <tr><td>Working</td><td>Current story context, active iteration state</td><td>Per-story (cleared on completion)</td></tr>
+    <tr><td>Episodic</td><td>Error fixes and outcomes per story</td><td>Consolidated post-story</td></tr>
+    <tr><td>Semantic</td><td>General patterns and conventions across stories</td><td>Long-lived, periodically pruned</td></tr>
+    <tr><td>Procedural</td><td>Build/test/deploy recipes that worked per repo type</td><td>Long-lived, validated on use</td></tr>
+    <tr><td>Project</td><td>Repo-specific conventions, reviewer preferences, failure patterns</td><td>Linked to git SHA, auto-invalidated</td></tr>
+  </table></div>
+
+  <h3>TR-7: PR-Native Workflow &amp; CI/CD Integration <span class="tag tag-new">NEW</span></h3>
+  <ul class="spec">
+    <li><strong>TR-7.1:</strong> Feature branch per story with conventional naming (<code>feature/STORY-{id}-{slug}</code>).</li>
+    <li><strong>TR-7.2:</strong> Conventional commits — feat/fix/refactor prefix matching story type.</li>
+    <li><strong>TR-7.3:</strong> Evidence bundle attached to each PR as comments or check annotations.</li>
+    <li><strong>TR-7.4:</strong> Branch protection integration — respect required reviewers and merge restrictions.</li>
+    <li><strong>TR-7.5:</strong> GitHub Actions / GitLab CI triggering and status check alignment.</li>
+    <li><strong>TR-7.6:</strong> Rollback automation — if post-deploy verification fails, auto-rollback with incident report.</li>
+    <li><strong>TR-7.7:</strong> Multi-repository coordinated PRs — synchronized changes across repos with cross-repo contract validation.</li>
+  </ul>
+
+  <h3>TR-8: Technology Stack</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Layer</th><th>Technology</th><th>Purpose</th></tr>
+    <tr><td>Runtime</td><td>Python 3.11+, async/await</td><td>Core agent logic</td></tr>
+    <tr><td>Framework</td><td>FastAPI + Uvicorn</td><td>HTTP API server</td></tr>
+    <tr><td>Validation</td><td>Pydantic v2</td><td>Request/response models</td></tr>
+    <tr><td>Logging</td><td>structlog</td><td>Structured JSON logging</td></tr>
+    <tr><td>Frontend</td><td>React 18 (CDN), HTML/CSS/JS</td><td>Admin panel + Workspace UI</td></tr>
+    <tr><td>LLM Providers</td><td>Anthropic, OpenAI, Gemini, Ollama</td><td>Multi-model routing</td></tr>
+    <tr><td>VCS</td><td>Git (subprocess), GitHub API (gh CLI)</td><td>Source control + PR creation</td></tr>
+    <tr><td>Testing</td><td>pytest, jest (configurable)</td><td>Test execution</td></tr>
+    <tr><td>Security</td><td>Bandit, ESLint Security, Semgrep</td><td>SAST scanning</td></tr>
+  </table></div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- 3. USER STORIES -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section class="section section-anchor" id="stories">
+  <h2><span class="sec-icon">&#128221;</span> User Stories</h2>
+  <p class="lead">Stories organized by persona: Developer, Team Lead, Security Engineer, and Platform Engineer.</p>
+
+  <h3>Developer Stories</h3>
+
+  <div class="story">
+    <span class="story-id">US-001</span>
+    <h5>As a developer, I want to submit a user story and receive a merge-ready PR, so I can focus on product decisions instead of implementation.</h5>
+    <div class="ac"><strong>Acceptance Criteria:</strong> Given a well-formed user story, when submitted via API or UI, then a PR is created on the target repo within 30 minutes containing passing tests, SAST clean report, and evidence bundle.</div>
+  </div>
+
+  <div class="story">
+    <span class="story-id">US-002</span>
+    <h5>As a developer, I want the agent to understand my existing codebase conventions, so generated code matches the project style.</h5>
+    <div class="ac"><strong>Acceptance Criteria:</strong> Given a cloned repo, when the agent indexes it, then generated code follows detected naming conventions, folder structure, and framework patterns (verified by lint pass).</div>
+  </div>
+
+  <div class="story">
+    <span class="story-id">US-003</span>
+    <h5>As a developer, I want to see the agent's execution plan before it writes code, so I can course-correct early.</h5>
+    <div class="ac"><strong>Acceptance Criteria:</strong> When pre_code approval gate is enabled, the agent pauses after planning and presents the plan in the UI with approve/reject/comment actions.</div>
+  </div>
+
+  <div class="story">
+    <span class="story-id">US-004</span>
+    <h5>As a developer, I want the agent to auto-fix failures and iterate, so I don't have to debug AI-generated code myself.</h5>
+    <div class="ac"><strong>Acceptance Criteria:</strong> When a test or lint check fails, the agent retries up to 5 times with progressive context enrichment; oscillation detection prevents infinite loops.</div>
+  </div>
+
+  <div class="story">
+    <span class="story-id">US-005</span>
+    <h5>As a developer, I want generated tests to cover my acceptance criteria, so I have confidence the PR actually solves the story.</h5>
+    <div class="ac"><strong>Acceptance Criteria:</strong> Each acceptance criterion in the story maps to at least one generated test. Evidence bundle includes the criteria-to-test mapping.</div>
+  </div>
+
+  <div class="story">
+    <span class="story-id">US-006</span>
+    <h5>As a developer, I want to import my existing multi-year repo and start using the agent immediately, not rebuild from scratch.</h5>
+    <div class="ac"><strong>Acceptance Criteria:</strong> Given a git URL, the agent clones, indexes (AST, dependencies, conventions, symbols), and builds a ProjectProfile in under 5 minutes.</div>
+  </div>
+
+  <h3>Team Lead Stories</h3>
+
+  <div class="story">
+    <span class="story-id">US-007</span>
+    <h5>As a team lead, I want to configure which changes need human approval, so high-risk operations are reviewed while routine work flows automatically.</h5>
+    <div class="ac"><strong>Acceptance Criteria:</strong> Policy rules configurable per-repo; auto-merge triggers only when all gates pass AND criticality is below threshold. Infra/auth changes always require review.</div>
+  </div>
+
+  <div class="story">
+    <span class="story-id">US-008</span>
+    <h5>As a team lead, I want a full audit trail of every agent decision, so I can answer "who approved what, when, and why."</h5>
+    <div class="ac"><strong>Acceptance Criteria:</strong> Every decision point logged with actor (agent/human/policy), timestamp, story context, available evidence, and gate evaluated. Exportable as JSON/CSV.</div>
+  </div>
+
+  <div class="story">
+    <span class="story-id">US-009</span>
+    <h5>As a team lead, I want cost budgets per story and per day, so AI spending is predictable and capped.</h5>
+    <div class="ac"><strong>Acceptance Criteria:</strong> Agent pauses on budget threshold; admin receives notification; cost tracking visible in dashboard with per-story and per-day breakdowns.</div>
+  </div>
+
+  <div class="story">
+    <span class="story-id">US-010</span>
+    <h5>As a team lead, I want the agent to learn from reviewer rejections, so the same mistakes don't repeat.</h5>
+    <div class="ac"><strong>Acceptance Criteria:</strong> After human rejection, the agent stores the rejection reason, classifies it, and demonstrates ≥80% reduction in same-class rejections within 10 subsequent stories.</div>
+  </div>
+
+  <div class="story">
+    <span class="story-id">US-011</span>
+    <h5>As a team lead, I want to see a dashboard of agent success rates and iteration counts per repo, so I can measure ROI.</h5>
+    <div class="ac"><strong>Acceptance Criteria:</strong> Dashboard shows: stories processed, merge rate, average iterations, cost per story, quality gate pass rate, all filterable by repo and time range.</div>
+  </div>
+
+  <div class="story">
+    <span class="story-id">US-012</span>
+    <h5>As a team lead, I want the agent to handle coordinated changes across multiple repos in our microservice architecture.</h5>
+    <div class="ac"><strong>Acceptance Criteria:</strong> Given a story that affects shared types/contracts, the agent creates synchronized PRs across affected repos with cross-repo validation before merging.</div>
+  </div>
+
+  <h3>Security Engineer Stories</h3>
+
+  <div class="story">
+    <span class="story-id">US-013</span>
+    <h5>As a security engineer, I want every PR to include a SAST scan report, so vulnerabilities are caught before merge.</h5>
+    <div class="ac"><strong>Acceptance Criteria:</strong> Evidence bundle includes Bandit/Semgrep results; PRs with high/critical findings are blocked; security_finding gate routes to security reviewer.</div>
+  </div>
+
+  <div class="story">
+    <span class="story-id">US-014</span>
+    <h5>As a security engineer, I want secret detection enforced on all generated code, with no override option.</h5>
+    <div class="ac"><strong>Acceptance Criteria:</strong> Secret detection gate is always enforced (not configurable to disable). Regex + entropy scanning catches API keys, tokens, passwords.</div>
+  </div>
+
+  <div class="story">
+    <span class="story-id">US-015</span>
+    <h5>As a security engineer, I want the agent's shell execution sandboxed with command allowlists and env isolation.</h5>
+    <div class="ac"><strong>Acceptance Criteria:</strong> Only pre-approved commands execute; LD_PRELOAD/PYTHONPATH/NODE_OPTIONS blocked; all user input shlex.quote()'d; working directory enforced within project.</div>
+  </div>
+
+  <div class="story">
+    <span class="story-id">US-016</span>
+    <h5>As a security engineer, I want the API protected by authentication with no sensitive data in error responses.</h5>
+    <div class="ac"><strong>Acceptance Criteria:</strong> Bearer token on all API routes; CORS restricted to localhost; error responses return request_id only (no stack traces); 1MB request size limit.</div>
+  </div>
+
+  <div class="story">
+    <span class="story-id">US-017</span>
+    <h5>As a security engineer, I want dependency auditing to catch known CVEs in any packages the agent adds.</h5>
+    <div class="ac"><strong>Acceptance Criteria:</strong> When the agent adds a new dependency, it runs a vulnerability audit; critical CVEs block the PR; severity thresholds configurable.</div>
+  </div>
+
+  <h3>Platform Engineer Stories</h3>
+
+  <div class="story">
+    <span class="story-id">US-018</span>
+    <h5>As a platform engineer, I want to configure LLM providers and model routing without code changes.</h5>
+    <div class="ac"><strong>Acceptance Criteria:</strong> Admin panel allows adding/removing providers, setting API keys, configuring task-to-model mappings, and testing connectivity — all via UI.</div>
+  </div>
+
+  <div class="story">
+    <span class="story-id">US-019</span>
+    <h5>As a platform engineer, I want the agent to handle provider outages gracefully with automatic fallback.</h5>
+    <div class="ac"><strong>Acceptance Criteria:</strong> Health checks run on each provider; failures trigger automatic rerouting to fallback chain; admin notified of outage; no story processing interrupted.</div>
+  </div>
+
+  <div class="story">
+    <span class="story-id">US-020</span>
+    <h5>As a platform engineer, I want structured JSON logging with correlation IDs for observability.</h5>
+    <div class="ac"><strong>Acceptance Criteria:</strong> Every log entry includes story_id, request_id, component name, and timestamp; logs parseable by ELK/Datadog/Splunk.</div>
+  </div>
+
+  <div class="story">
+    <span class="story-id">US-021</span>
+    <h5>As a platform engineer, I want the agent deployable via Docker with configurable resource limits.</h5>
+    <div class="ac"><strong>Acceptance Criteria:</strong> Dockerfile produces a working container; CPU/memory limits configurable; health endpoint at /health; graceful shutdown on SIGTERM.</div>
+  </div>
+
+  <div class="story">
+    <span class="story-id">US-022</span>
+    <h5>As a platform engineer, I want quality gate templates for common compliance frameworks (SOC2, HIPAA, PCI-DSS).</h5>
+    <div class="ac"><strong>Acceptance Criteria:</strong> Pre-built policy templates loadable via config; each template sets appropriate gate thresholds and required scans for its compliance framework.</div>
+  </div>
+
+  <div class="story">
+    <span class="story-id">US-023</span>
+    <h5>As a platform engineer, I want SSO/SCIM integration for enterprise identity management on approval workflows.</h5>
+    <div class="ac"><strong>Acceptance Criteria:</strong> SAML/OIDC SSO for login; SCIM for user provisioning; approval routing respects organizational roles and team membership.</div>
+  </div>
+
+  <div class="story">
+    <span class="story-id">US-024</span>
+    <h5>As a platform engineer, I want post-deploy verification with automatic rollback on failure.</h5>
+    <div class="ac"><strong>Acceptance Criteria:</strong> After deployment, the verifier runs health checks and smoke tests; if any fail, automatic rollback with incident report generated.</div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- 4. IMPLEMENTATION TRACKER -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section class="section section-anchor" id="tracker">
+  <h2><span class="sec-icon">&#128202;</span> Implementation Tracker</h2>
+  <p class="lead">Current implementation status of all components. Green = implemented, amber = partial, red = planned.</p>
+
+  <div class="stats-row">
+    <div class="stat-card"><span class="num" style="color:var(--green)">39</span><span class="label">Implemented</span></div>
+    <div class="stat-card"><span class="num" style="color:var(--amber)">0</span><span class="label">Partial</span></div>
+    <div class="stat-card"><span class="num" style="color:var(--red)">0</span><span class="label">Planned</span></div>
+    <div class="stat-card"><span class="num">25,564</span><span class="label">Lines of Code</span></div>
+  </div>
+
+  <h3>Core Pipeline Components</h3>
+  <div class="tracker-grid">
+    <div class="tracker-item done">
+      <h5>Orchestrator <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">orchestrator/__init__.py — 874 lines</div>
+      <div class="desc">10-state FSM, story processing loop, convergence detection, adapter integration.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>State Machine <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">orchestrator/state_machine.py — 179 lines</div>
+      <div class="desc">Valid transitions, state guards, transition logging.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Adapter Layer <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">orchestrator/adapters.py — 631 lines</div>
+      <div class="desc">13 adapter classes bridging real components to Protocol interfaces.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Convergence Detector <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">orchestrator/convergence_detector.py — 192 lines</div>
+      <div class="desc">SHA-256 error fingerprinting, oscillation detection, diminishing returns.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Retry Policy <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">orchestrator/retry_policy.py — 259 lines</div>
+      <div class="desc">Exponential backoff, max attempts, progressive context enrichment.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Approval Gates <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">orchestrator/approval_gate.py — 290 lines</div>
+      <div class="desc">5 configurable gates (pre_code, pre_deploy, pre_production, budget, ambiguity).</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+  </div>
+
+  <h3>AI &amp; Analysis Components</h3>
+  <div class="tracker-grid">
+    <div class="tracker-item done">
+      <h5>Story Analyzer <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">analyzer/__init__.py — 413 lines</div>
+      <div class="desc">Story parsing, complexity scoring, acceptance criteria extraction, ambiguity detection.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Planner <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">planner/__init__.py — 522 lines</div>
+      <div class="desc">Execution plan generation, task decomposition, file identification, dependency ordering.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Code Generator <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">generator/__init__.py — 429 lines</div>
+      <div class="desc">Multi-file code generation with codebase context, convention-aware output.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Code Reviewer <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">reviewer/__init__.py — 217 lines</div>
+      <div class="desc">Multi-axis self-reflection scoring (correctness, style, security, performance).</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Test Generator <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">tester/__init__.py — 313 lines</div>
+      <div class="desc">BDD criteria to test mapping, unit and integration test generation.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+  </div>
+
+  <h3>Codebase Intelligence</h3>
+  <div class="tracker-grid">
+    <div class="tracker-item done">
+      <h5>AST Indexer <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">codebase/ast_indexer.py — 346 lines</div>
+      <div class="desc">Python AST parsing, class/function/import extraction.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Dependency Graph <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">codebase/dependency_graph.py — 282 lines</div>
+      <div class="desc">Import tracking, circular detection, module boundaries.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Convention Detector <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">codebase/convention_detector.py — 441 lines</div>
+      <div class="desc">Naming patterns, folder structure, framework detection, test patterns.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Symbol Table <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">codebase/symbol_table.py — 174 lines</div>
+      <div class="desc">Symbol registry, type tracking, usage indexing.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Semantic Search <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">codebase/semantic_search.py — 208 lines</div>
+      <div class="desc">TF-IDF vector embeddings, natural language code search.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Ownership Map <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">codebase/ownership_map.py — 450+ lines</div>
+      <div class="desc">CODEOWNERS parsing, git blame analysis, review routing, glob-to-regex matching.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Cross-Repo Index <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">codebase/cross_repo_index.py — 878 lines</div>
+      <div class="desc">Shared types/contracts across repos, Protobuf/OpenAPI/GraphQL scanning, change plans.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+  </div>
+
+  <h3>Infrastructure &amp; Tooling</h3>
+  <div class="tracker-grid">
+    <div class="tracker-item done">
+      <h5>LLM Router <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">llm/router.py — 414 lines</div>
+      <div class="desc">4 providers, 9 task categories, 3 tiers, fallback chains, health checks.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Shell Executor <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">tools/shell_executor.py — 224 lines</div>
+      <div class="desc">Command allowlist, shlex.quote injection prevention, env isolation, dir enforcement.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Test Runner <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">tools/test_runner.py — 195 lines</div>
+      <div class="desc">pytest/jest execution, path validation, output parsing.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Build Runner <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">tools/build_runner.py — 176 lines</div>
+      <div class="desc">Build command execution, output capture, failure detection.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Deployer <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">deployer/__init__.py — 477 lines</div>
+      <div class="desc">PR creation via gh CLI, branch management, input sanitization.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Verifier <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">verifier/__init__.py — 432 lines</div>
+      <div class="desc">Health checks, smoke tests, URL validation, safe execution.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Memory Store <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">memory/__init__.py — 279 lines</div>
+      <div class="desc">5-tier memory, Jaccard similarity, consolidation, retrieval.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Error Classifier <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">errors/classifier.py — 213 lines</div>
+      <div class="desc">8-category taxonomy, SHA-256 fingerprinting, pattern matching.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Error Recovery <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">errors/recovery.py — 230 lines</div>
+      <div class="desc">Strategy selection per error type, context enrichment, recovery execution.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+  </div>
+
+  <h3>API &amp; Frontend</h3>
+  <div class="tracker-grid">
+    <div class="tracker-item done">
+      <h5>API Server <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">api/__init__.py — 280 lines</div>
+      <div class="desc">FastAPI app, bearer auth, CORS, size limiter, error handlers.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Ops Routes <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">api/ops_routes.py — 1,136 lines</div>
+      <div class="desc">Story submission, approval, status, queue management, webhooks.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Admin Routes <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">api/admin_routes.py — 1,028 lines</div>
+      <div class="desc">Provider management, key configuration, system status, settings.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Admin Panel (SPA) <span class="tag tag-impl">Implemented</span></h5>
+      <div class="desc">React 18 dashboard: provider config, model routing, health monitoring.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Workspace UI (SPA) <span class="tag tag-impl">Implemented</span></h5>
+      <div class="desc">Story submission form, status timeline, approval center, queue view.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+  </div>
+
+  <h3>Recently Implemented</h3>
+  <div class="tracker-grid">
+    <div class="tracker-item done">
+      <h5>SAST Integration <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">security/__init__.py — 812 lines</div>
+      <div class="desc">Bandit (Python), Semgrep multi-language scanning, 9-pattern secret detection with Shannon entropy.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Evidence Bundle Generator <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">evidence/__init__.py — 509 lines</div>
+      <div class="desc">Structured report assembly: test, SAST, coverage, impact, cost breakdown, reviewer checklist per PR.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Quality Gate Policy Engine <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">quality/__init__.py — 1266 lines</div>
+      <div class="desc">11 gates as policy objects, 3 templates (strict/standard/minimal), parallel execution, fail-fast support.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Post-Mortem Learning Engine <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">learning/__init__.py — 700+ lines</div>
+      <div class="desc">8 failure classes, root cause extraction, heuristic rule generation, JSON persistence, RAG retrieval.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+  </div>
+
+  <h3>Authentication &amp; Authorization</h3>
+  <div class="tracker-grid">
+    <div class="tracker-item done">
+      <h5>SSO Provider <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">auth/sso_provider.py — 450 lines</div>
+      <div class="desc">SAML 2.0 and OIDC with PKCE authentication flows, session management, token validation.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>SCIM Provider <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">auth/scim_provider.py — 593 lines</div>
+      <div class="desc">RFC 7643/7644 compliant user/group provisioning, SCIM filter parsing, PATCH operations.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+    <div class="tracker-item done">
+      <h5>Auth Middleware <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">auth/middleware.py — 264 lines, auth/scim_routes.py — 597 lines</div>
+      <div class="desc">FastAPI middleware with session/bearer/API key auth, role-based access, SCIM 2.0 REST endpoints.</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+  </div>
+
+  <h3>Resource Management</h3>
+  <div class="tracker-grid">
+    <div class="tracker-item done">
+      <h5>Resource Limiter <span class="tag tag-impl">Implemented</span></h5>
+      <div class="loc">tools/resource_limiter.py — 494 lines</div>
+      <div class="desc">OS-level resource limits (CPU, memory, disk, processes), /proc monitoring, 4 templates (strict/standard/relaxed/test).</div>
+      <div class="progress-bar"><div class="fill fill-green" style="width:100%"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- 5. SECURITY -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section class="section section-anchor" id="security">
+  <h2><span class="sec-icon">&#128274;</span> Security</h2>
+  <p class="lead">Comprehensive security model covering API authentication, execution sandboxing, generated code safety, and information disclosure prevention.</p>
+
+  <div class="callout red">
+    <strong>Research Context</strong>
+    Empirical research found meaningful rates of CWE vulnerabilities in AI-generated code across Python and JavaScript. Security scanning is not optional — it must be enforced at every iteration, not just before deployment.
+  </div>
+
+  <h3>SEC-1: API &amp; Authentication Security</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Control</th><th>Implementation</th><th>Status</th></tr>
+    <tr><td>Bearer Token Auth</td><td>Auto-generated secure random token at startup; configurable via AGENT_API_TOKEN env var. Constant-time comparison (hmac.compare_digest).</td><td><span class="tag tag-impl">Done</span></td></tr>
+    <tr><td>CORS Restriction</td><td>Localhost-only by default (http://localhost:*, http://127.0.0.1:*). Configurable via AGENT_CORS_ORIGINS. allow_credentials=False.</td><td><span class="tag tag-impl">Done</span></td></tr>
+    <tr><td>Request Size Limit</td><td>1 MB max request body. Prevents JSON bomb and memory exhaustion attacks.</td><td><span class="tag tag-impl">Done</span></td></tr>
+    <tr><td>Input Validation</td><td>Pydantic v2 models on all endpoints. Field constraints: title max 500, description max 50K, criteria max 50, tags max 20.</td><td><span class="tag tag-impl">Done</span></td></tr>
+    <tr><td>API Key Validation</td><td>Max 512 chars, no control characters. Keys persisted in admin DB, masked in API responses, never written to .env/.agent.json.</td><td><span class="tag tag-impl">Done</span></td></tr>
+    <tr><td>Rate Limiting</td><td>Per-token and per-IP rate limits for admin and story submission endpoints. Burst + sustained windows.</td><td><span class="tag tag-planned">Planned</span></td></tr>
+    <tr><td>RBAC for Admin Actions</td><td>Role-based permissions via SSO/SCIM integration for provider key updates, policy changes, deploy approvals, and config export.</td><td><span class="tag tag-impl">Done</span></td></tr>
+  </table></div>
+
+  <h3>SEC-2: Execution Sandboxing</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Control</th><th>Implementation</th><th>Status</th></tr>
+    <tr><td>Command Allowlist</td><td>Only pre-approved commands (python, node, npm, pip, git, pytest, jest, curl, gh, etc.) can execute. Path prefixes stripped; unknown commands rejected.</td><td><span class="tag tag-impl">Done</span></td></tr>
+    <tr><td>Shell Injection Prevention</td><td>All user-derived values passed through shlex.quote(). URL validation before curl. Regex sanitization on branch names, story IDs, PR titles.</td><td><span class="tag tag-impl">Done</span></td></tr>
+    <tr><td>Environment Isolation</td><td>Blocked env vars: LD_PRELOAD, LD_LIBRARY_PATH, DYLD_INSERT_LIBRARIES, PYTHONPATH, NODE_OPTIONS, BASH_ENV, ENV, CDPATH, PYTHONSTARTUP, PERL5OPT.</td><td><span class="tag tag-impl">Done</span></td></tr>
+    <tr><td>Working Directory Enforcement</td><td>All command execution constrained to project directory. Path traversal attempts rejected.</td><td><span class="tag tag-impl">Done</span></td></tr>
+    <tr><td>Resource Limits</td><td>CPU time: 5 min, memory: 2 GB, disk: 10 GB, max 50 processes per command. OS-level enforcement via setrlimit + /proc monitoring. 4 templates: strict, standard, relaxed, test.</td><td><span class="tag tag-impl">Done</span></td></tr>
+  </table></div>
+
+  <h3>SEC-3: Generated Code Security</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Control</th><th>Implementation</th><th>Status</th></tr>
+    <tr><td>SAST Scanning</td><td>Bandit (Python), Semgrep multi-language. Runs at every iteration before code review stage. Graceful degradation if tools not installed.</td><td><span class="tag tag-impl">Done</span></td></tr>
+    <tr><td>Secret Detection</td><td>9 regex patterns + Shannon entropy filtering on all generated files. Always enforced (not configurable to disable). Detects AWS keys, GitHub tokens, API keys, JWTs, private keys, Slack tokens, DB connection strings.</td><td><span class="tag tag-impl">Done</span></td></tr>
+    <tr><td>Dependency Audit</td><td>pip-audit / npm audit integration via Quality Gate Engine. Critical CVEs block the PR.</td><td><span class="tag tag-impl">Done</span></td></tr>
+    <tr><td>SQL/XSS Detection</td><td>Pattern detection via Semgrep rules for SQL injection and XSS vulnerabilities in web-facing code.</td><td><span class="tag tag-impl">Done</span></td></tr>
+    <tr><td>Self-Reflection Security</td><td>Code reviewer scores security axis; minimum score ≥0.8 required to proceed.</td><td><span class="tag tag-impl">Done</span></td></tr>
+  </table></div>
+
+  <h3>SEC-4: Information Disclosure Prevention</h3>
+  <ul class="spec">
+    <li><strong>SEC-4.1:</strong> Error responses return generic messages + request_id only. No internal details, stack traces, or exception messages exposed to clients.</li>
+    <li><strong>SEC-4.2:</strong> API keys masked in all admin panel API responses (show only last 4 chars).</li>
+    <li><strong>SEC-4.3:</strong> Stack traces and full error details logged server-side only via structlog.</li>
+    <li><strong>SEC-4.4:</strong> Admin key validation errors: generic message to client, full details to server log.</li>
+  </ul>
+
+  <h3>SEC-5: Audit &amp; Governance <span class="tag tag-new">NEW</span></h3>
+  <ul class="spec">
+    <li><strong>SEC-5.1:</strong> Every agent decision logged: actor (agent/human/policy rule), timestamp, story context, available evidence, gate evaluated.</li>
+    <li><strong>SEC-5.2:</strong> Approval decisions include the human reviewer identity (SSO-linked), their comment, and the evidence they reviewed.</li>
+    <li><strong>SEC-5.3:</strong> Audit log exportable as JSON/CSV for compliance reporting.</li>
+    <li><strong>SEC-5.4:</strong> Secrets never appear in PR descriptions, generated code, log output, or error messages.</li>
+    <li><strong>SEC-5.5:</strong> Tamper-evident audit chain (hash-linked entries) to detect alteration of operational history.</li>
+    <li><strong>SEC-5.6:</strong> Policy change audit requires reason + actor + before/after diff for compliance traceability.</li>
+  </ul>
+
+  <h3>SEC-6: Enterprise Hardening Requirements <span class="tag tag-new">NEW</span></h3>
+  <div class="table-wrap"><table>
+    <tr><th>Control</th><th>Requirement</th><th>Status</th></tr>
+    <tr><td>Key Encryption at Rest</td><td>Encrypt provider API keys in admin DB using envelope encryption (KMS/Vault managed DEK).</td><td><span class="tag tag-planned">Planned</span></td></tr>
+    <tr><td>Key Rotation</td><td>Support scheduled key rotation and revocation with zero-downtime provider failover.</td><td><span class="tag tag-planned">Planned</span></td></tr>
+    <tr><td>Secrets Manager Integration</td><td>Optional retrieval from Vault / AWS Secrets Manager / GCP Secret Manager instead of manual key entry.</td><td><span class="tag tag-planned">Planned</span></td></tr>
+    <tr><td>Webhook Signature Verification</td><td>Verify HMAC signatures for inbound SCM webhooks; reject unsigned or replayed payloads.</td><td><span class="tag tag-planned">Planned</span></td></tr>
+    <tr><td>Egress Policy</td><td>Allow outbound network only to approved domains (LLM APIs, package registries, SCM).</td><td><span class="tag tag-partial">Partial</span></td></tr>
+    <tr><td>Tenant Isolation</td><td>Per-repo/project logical isolation for config, memory, and audit artifacts to prevent cross-project data leakage.</td><td><span class="tag tag-planned">Planned</span></td></tr>
+  </table></div>
+
+  <h3>Security Vulnerabilities Fixed (Audit Results)</h3>
+  <div class="table-wrap"><table>
+    <tr><th>ID</th><th>Severity</th><th>Issue</th><th>Fix</th><th>Status</th></tr>
+    <tr><td>SEC-A1</td><td><span class="tag tag-critical">Critical</span></td><td>No API authentication</td><td>Bearer token auth on all routes</td><td><span class="tag tag-impl">Fixed</span></td></tr>
+    <tr><td>SEC-A2</td><td><span class="tag tag-critical">Critical</span></td><td>Shell injection in deployer</td><td>shlex.quote() + regex sanitization</td><td><span class="tag tag-impl">Fixed</span></td></tr>
+    <tr><td>SEC-A3</td><td><span class="tag tag-high">High</span></td><td>CORS allows all origins</td><td>Restricted to localhost; configurable</td><td><span class="tag tag-impl">Fixed</span></td></tr>
+    <tr><td>SEC-A4</td><td><span class="tag tag-high">High</span></td><td>Error responses leak internals</td><td>Generic messages + request_id only</td><td><span class="tag tag-impl">Fixed</span></td></tr>
+    <tr><td>SEC-A5</td><td><span class="tag tag-high">High</span></td><td>Test runner path traversal</td><td>Path validation + project dir enforcement</td><td><span class="tag tag-impl">Fixed</span></td></tr>
+    <tr><td>SEC-A6</td><td><span class="tag tag-medium">Medium</span></td><td>No request size limits</td><td>1 MB middleware limit</td><td><span class="tag tag-impl">Fixed</span></td></tr>
+    <tr><td>SEC-A7</td><td><span class="tag tag-medium">Medium</span></td><td>Env var manipulation risk</td><td>Blocked vars deny list</td><td><span class="tag tag-impl">Fixed</span></td></tr>
+    <tr><td>SEC-A8</td><td><span class="tag tag-medium">Medium</span></td><td>Verifier URL injection</td><td>_is_safe_url() validation</td><td><span class="tag tag-impl">Fixed</span></td></tr>
+    <tr><td>SEC-A9</td><td><span class="tag tag-medium">Medium</span></td><td>No input validation on ops API</td><td>Pydantic field constraints</td><td><span class="tag tag-impl">Fixed</span></td></tr>
+    <tr><td>SEC-A10</td><td><span class="tag tag-low">Low</span></td><td>API key exposure in admin</td><td>Masked display, logged securely</td><td><span class="tag tag-impl">Fixed</span></td></tr>
+    <tr><td>SEC-A11</td><td><span class="tag tag-low">Low</span></td><td>Credentials with allow_credentials</td><td>Set to False</td><td><span class="tag tag-impl">Fixed</span></td></tr>
+    <tr><td>SEC-A12</td><td><span class="tag tag-low">Low</span></td><td>Command path bypass</td><td>Strip path prefix from names</td><td><span class="tag tag-impl">Fixed</span></td></tr>
+  </table></div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- 6. DEPLOYMENT -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section class="section section-anchor" id="deployment">
+  <h2><span class="sec-icon">&#128640;</span> Deployment</h2>
+  <p class="lead">Deployment architecture, configuration, and operational requirements for running the agent in production.</p>
+
+  <h3>DEP-1: Deployment Architecture</h3>
+  <div class="callout green">
+    <strong>Self-Hosted First</strong>
+    The agent runs on-premise or in the customer's cloud. No data leaves the customer's environment except for LLM API calls (configurable to use local Ollama for air-gapped deployments).
+  </div>
+
+  <div class="table-wrap"><table>
+    <tr><th>Component</th><th>Runtime</th><th>Port</th><th>Notes</th></tr>
+    <tr><td>API Server</td><td>FastAPI + Uvicorn (async)</td><td>8000</td><td>Main entry point for all operations</td></tr>
+    <tr><td>Admin Panel</td><td>React 18 SPA (static)</td><td>/admin</td><td>Served by FastAPI static mount</td></tr>
+    <tr><td>Workspace UI</td><td>React 18 SPA (static)</td><td>/workspace</td><td>Served by FastAPI static mount</td></tr>
+    <tr><td>Health Endpoint</td><td>GET /health</td><td>8000</td><td>No auth required; returns system status</td></tr>
+  </table></div>
+
+  <h3>DEP-2: Configuration</h3>
+  <h4>Environment Variables</h4>
+  <div class="table-wrap"><table>
+    <tr><th>Variable</th><th>Purpose</th><th>Default</th><th>Required</th></tr>
+    <tr><td><code>AGENT_API_TOKEN</code></td><td>Bearer token for API auth</td><td>Auto-generated at startup</td><td>No</td></tr>
+    <tr><td><code>AGENT_CORS_ORIGINS</code></td><td>Allowed CORS origins (comma-separated)</td><td>localhost only</td><td>No</td></tr>
+    <tr><td><code>AGENT_ADMIN_DB_PATH</code></td><td>Path to admin SQLite DB storing provider keys and control-plane config</td><td><code>{project_dir}/.agent_admin.db</code></td><td>No</td></tr>
+    <tr><td><code>AGENT_KEY_ENCRYPTION_KEY</code></td><td>Optional key-encryption secret (or KMS reference) for encrypting provider API keys at rest</td><td>—</td><td>Required for hardened mode</td></tr>
+    <tr><td><code>ANTHROPIC_API_KEY</code></td><td>Anthropic Claude API key</td><td>—</td><td>At least one provider</td></tr>
+    <tr><td><code>OPENAI_API_KEY</code></td><td>OpenAI API key</td><td>—</td><td>No</td></tr>
+    <tr><td><code>GEMINI_API_KEY</code></td><td>Google Gemini API key</td><td>—</td><td>No</td></tr>
+    <tr><td><code>PROJECT_DIR</code></td><td>Target repo working directory</td><td>./workspace</td><td>Yes</td></tr>
+    <tr><td><code>LOG_LEVEL</code></td><td>Logging level</td><td>INFO</td><td>No</td></tr>
+  </table></div>
+
+  <div class="callout amber">
+    <strong>Key Management Policy</strong>
+    LLM provider keys are managed through Admin APIs/UI and stored in the admin DB. Keys must not be stored in <code>.env</code> for normal operation.
+  </div>
+  <div class="callout">
+    <strong>Ollama Configuration Policy</strong>
+    Ollama enable/disable and base URL are managed via Admin Panel configuration, not by environment variables. Provider toggles persist automatically to config storage.
+  </div>
+
+  <h4>Project Configuration File</h4>
+  <ul class="spec">
+    <li><strong>DEP-2.1:</strong> Per-project config file (<code>.autodev.yaml</code>) in repo root specifying: quality gate thresholds, approval gate toggles, cost budgets, LLM routing overrides, and test commands.</li>
+    <li><strong>DEP-2.2:</strong> Config inheritance: global defaults → organization defaults → repo-level overrides.</li>
+    <li><strong>DEP-2.3:</strong> Quality gate policy templates loadable by name (e.g., <code>policy: soc2-strict</code>).</li>
+  </ul>
+
+  <h3>DEP-3: Container Deployment</h3>
+  <ul class="spec">
+    <li><strong>DEP-3.1:</strong> Dockerfile produces a production-ready container with Python 3.11, Node.js, git, and all CLI tools pre-installed.</li>
+    <li><strong>DEP-3.2:</strong> Health check at <code>/health</code> endpoint for orchestrator readiness probes.</li>
+    <li><strong>DEP-3.3:</strong> Graceful shutdown on SIGTERM — complete in-progress story iteration before exiting.</li>
+    <li><strong>DEP-3.4:</strong> Resource limits configurable: CPU, memory, disk, and per-command execution timeouts.</li>
+    <li><strong>DEP-3.5:</strong> Docker Compose configuration for single-node deployment with persistent volume for memory store.</li>
+  </ul>
+
+  <h3>DEP-4: Operational Requirements</h3>
+  <ul class="spec">
+    <li><strong>DEP-4.1: Structured logging</strong> — All logs in JSON format via structlog, including story_id, request_id, component name, and timestamp. Compatible with ELK/Datadog/Splunk.</li>
+    <li><strong>DEP-4.2: Health monitoring</strong> — /health endpoint returns: server uptime, active story count, provider connectivity status, memory store size, queue depth.</li>
+    <li><strong>DEP-4.3: Crash recovery</strong> — Story state persisted to disk; on restart, in-progress stories resume from last checkpoint.</li>
+    <li><strong>DEP-4.4: Backup</strong> — Memory store and project profiles exportable/importable for disaster recovery.</li>
+  </ul>
+
+  <h3>DEP-5: Rollback &amp; Verification</h3>
+  <ul class="spec">
+    <li><strong>DEP-5.1:</strong> Post-deploy verification runs health checks and smoke tests on deployed changes.</li>
+    <li><strong>DEP-5.2:</strong> If verification fails, automatic rollback by reverting the PR/deployment with an incident report.</li>
+    <li><strong>DEP-5.3:</strong> Verification timeout configurable (default 5 minutes). Timeout treated as failure → rollback triggered.</li>
+    <li><strong>DEP-5.4:</strong> Rollback actions logged in audit trail with full evidence of what failed and why.</li>
+  </ul>
+
+  <h3>DEP-6: Scaling Considerations</h3>
+  <ul class="spec">
+    <li><strong>DEP-6.1:</strong> Story processing is async — multiple stories can be queued and processed sequentially (parallel processing planned for future).</li>
+    <li><strong>DEP-6.2:</strong> LLM calls are the primary bottleneck. Multi-model routing distributes load and enables concurrent calls to different providers.</li>
+    <li><strong>DEP-6.3:</strong> Codebase indexing is incremental after initial import — only changed files re-indexed.</li>
+    <li><strong>DEP-6.4:</strong> Memory store uses file-backed JSON with Jaccard similarity search. Database-backed store planned for high-volume deployments.</li>
+  </ul>
+</section>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- 7. USABILITY -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section class="section section-anchor" id="ux">
+  <h2><span class="sec-icon">&#127919;</span> Usability &amp; Operator Experience</h2>
+  <p class="lead">Requirements that make the application easy to adopt, safe to operate, and understandable for developers and platform teams.</p>
+
+  <h3>UX-1: Zero-Conf Onboarding</h3>
+  <ul class="spec">
+    <li><strong>UX-1.1:</strong> First-run setup wizard: project path check, git health check, provider key setup, and test command detection.</li>
+    <li><strong>UX-1.2:</strong> One-click "Validate Setup" that runs dry-run checks (auth, provider connectivity, build/test command discovery).</li>
+    <li><strong>UX-1.3:</strong> Guided defaults for common stacks (Python/FastAPI, Node/Express, Next.js, Django, Spring).</li>
+  </ul>
+
+  <h3>UX-2: Explainability by Default</h3>
+  <ul class="spec">
+    <li><strong>UX-2.1:</strong> Every blocked gate surfaces: what failed, why it matters, and exact next action to unblock.</li>
+    <li><strong>UX-2.2:</strong> Story timeline shows decisions, retries, and policy triggers in human-readable format alongside raw logs.</li>
+    <li><strong>UX-2.3:</strong> Evidence bundle includes a short executive summary for maintainers (risk, impact, confidence, unresolved items).</li>
+  </ul>
+
+  <h3>UX-3: Safe Operations Modes</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Mode</th><th>Use Case</th><th>Behavior</th></tr>
+    <tr><td>Observe</td><td>New team onboarding</td><td>Plan + review only, no code writes or deploys</td></tr>
+    <tr><td>Assist</td><td>Developer copilot mode</td><td>Code + tests generated, human approval required for deploy/merge</td></tr>
+    <tr><td>Autonomous</td><td>Mature repo with stable gates</td><td>Full loop with policy-based approvals and auto-merge when eligible</td></tr>
+  </table></div>
+
+  <h3>UX-4: Friction Reduction Requirements</h3>
+  <ul class="spec">
+    <li><strong>UX-4.1:</strong> Inline policy editor with validation and preview of which gates will trigger for a sample story.</li>
+    <li><strong>UX-4.2:</strong> Queue controls: pause/resume/reprioritize stories without restarting the service.</li>
+    <li><strong>UX-4.3:</strong> Deterministic rerun: "retry from failed stage" and "rerun full story" actions with config snapshot pinning.</li>
+    <li><strong>UX-4.4:</strong> Accessibility baseline: keyboard navigation, visible focus states, color-contrast compliance (WCAG AA).</li>
+  </ul>
+</section>
+
+<!-- Footer -->
+<footer style="border-top:1px solid var(--border);padding-top:2rem;margin-top:3rem;text-align:center;color:var(--dim);font-size:.8rem">
+  <p>Autonomous Software Development Agent — Project Specification v4.1</p>
+  <p style="margin-top:.25rem">Generated April 2026 | Author: Suman</p>
+  <p style="margin-top:.5rem;font-size:.72rem">Research sources: DORA AI Tensions Report, METR SWE-bench Maintainer Study, Copilot Security Analysis, GitHub Copilot Cloud Agent Docs, Anthropic Claude Code Docs, Lovable Docs, Sourcegraph Agentic Context, Mordor Intelligence / Grand View Research Market Reports.</p>
+</footer>
+
+</div>
+</div>
+
+<script>
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('open');
+}
+// Close sidebar on nav link click (mobile)
+document.querySelectorAll('.nav-link').forEach(l=>{
+  l.addEventListener('click',()=>{
+    if(window.innerWidth<=900){
+      document.getElementById('sidebar').classList.remove('open');
+      document.getElementById('overlay').classList.remove('open');
+    }
+  });
+});
+// Active nav highlighting on scroll
+const sections=document.querySelectorAll('.section-anchor');
+const navLinks=document.querySelectorAll('.nav-link');
+const observer=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      navLinks.forEach(l=>l.classList.remove('active'));
+      const id=e.target.id;
+      const link=document.querySelector(`.nav-link[href="#${id}"]`);
+      if(link)link.classList.add('active');
+    }
+  });
+},{rootMargin:'-20% 0px -60% 0px'});
+sections.forEach(s=>observer.observe(s));
+</script>
+</body>
+</html>

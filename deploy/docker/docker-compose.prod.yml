@@ -1,0 +1,28 @@
+services:
+  fastcoder:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    image: fastcoder:latest
+    container_name: fastcoder
+    env_file:
+      - .env.prod
+    environment:
+      AGENT_PROJECT_DIR: /app
+      AGENT_ADMIN_DB_PATH: /data/.agent_admin.db
+      AGENT_LOG_LEVEL: info
+      AGENT_CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - fastcoder_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
+
+volumes:
+  fastcoder_data:

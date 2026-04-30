@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autonomous Software Engineering Gap Analysis</title>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 2px solid #1e293b;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: #06b6d4;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #94a3b8;
+            font-style: italic;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            color: #06b6d4;
+            margin: 2.5rem 0 1.5rem 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #1e293b;
+        }
+
+        h3 {
+            font-size: 1.3rem;
+            color: #10b981;
+            margin: 1.5rem 0 1rem 0;
+        }
+
+        h4 {
+            font-size: 1.05rem;
+            color: #06b6d4;
+            margin: 1.2rem 0 0.5rem 0;
+        }
+
+        p {
+            margin-bottom: 1rem;
+            color: #cbd5e1;
+        }
+
+        .toc {
+            background-color: #1e293b;
+            border-left: 4px solid #10b981;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 4px;
+        }
+
+        .toc h3 {
+            margin-top: 0;
+            color: #10b981;
+        }
+
+        .toc ol {
+            margin-left: 1.5rem;
+        }
+
+        .toc li {
+            margin-bottom: 0.5rem;
+            color: #94a3b8;
+        }
+
+        .toc a {
+            color: #06b6d4;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .toc a:hover {
+            color: #10b981;
+        }
+
+        .section-intro {
+            background-color: #1e293b;
+            padding: 1.5rem;
+            border-radius: 4px;
+            margin-bottom: 2rem;
+            border-left: 4px solid #06b6d4;
+        }
+
+        .gap-card {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            transition: border-color 0.2s;
+        }
+
+        .gap-card:hover {
+            border-color: #06b6d4;
+        }
+
+        .gap-number {
+            display: inline-block;
+            background-color: #06b6d4;
+            color: #0f172a;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .gap-title {
+            font-size: 1.4rem;
+            color: #10b981;
+            margin-bottom: 1.5rem;
+        }
+
+        .gap-subsection {
+            margin-bottom: 1.5rem;
+        }
+
+        .gap-subsection h5 {
+            font-size: 1.05rem;
+            color: #06b6d4;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.4rem 0.8rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-top: 1rem;
+        }
+
+        .status-implemented {
+            background-color: #10b981;
+            color: #0f172a;
+        }
+
+        .status-partial {
+            background-color: #f59e0b;
+            color: #0f172a;
+        }
+
+        .status-planned {
+            background-color: #ef4444;
+            color: #fff;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #1e293b;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 2rem 0;
+        }
+
+        th {
+            background-color: #0f172a;
+            color: #06b6d4;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #334155;
+        }
+
+        td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #334155;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .indicator-pass {
+            color: #10b981;
+            font-weight: 700;
+        }
+
+        .indicator-fail {
+            color: #ef4444;
+            font-weight: 700;
+        }
+
+        .indicator-partial {
+            color: #f59e0b;
+            font-weight: 700;
+        }
+
+        .diagram {
+            background-color: #1e293b;
+            padding: 2rem;
+            border-radius: 6px;
+            margin: 2rem 0;
+            border: 1px solid #334155;
+            font-size: 0.9rem;
+        }
+
+        .pipeline-flow {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 2rem 0;
+            justify-content: center;
+        }
+
+        .pipeline-box {
+            padding: 1rem 1.5rem;
+            border-radius: 4px;
+            font-weight: 600;
+            text-align: center;
+            min-width: 120px;
+            border: 2px solid;
+        }
+
+        .box-implemented {
+            background-color: #064e3b;
+            border-color: #10b981;
+            color: #10b981;
+        }
+
+        .box-partial {
+            background-color: #78350f;
+            border-color: #f59e0b;
+            color: #f59e0b;
+        }
+
+        .box-missing {
+            background-color: #7f1d1d;
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+
+        .arrow {
+            font-size: 1.5rem;
+            color: #94a3b8;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .comparison-item {
+            background-color: #1e293b;
+            padding: 1rem;
+            border-radius: 4px;
+            border-left: 3px solid #334155;
+        }
+
+        .comparison-item.ours {
+            border-left-color: #10b981;
+        }
+
+        .comparison-item h4 {
+            margin-bottom: 0.5rem;
+        }
+
+        .roadmap-list {
+            list-style: none;
+            counter-reset: roadmap;
+        }
+
+        .roadmap-list li {
+            counter-increment: roadmap;
+            background-color: #1e293b;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #06b6d4;
+            border-radius: 4px;
+        }
+
+        .roadmap-list li::before {
+            content: counter(roadmap);
+            display: inline-block;
+            background-color: #06b6d4;
+            color: #0f172a;
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 1.5rem;
+            margin-right: 0.75rem;
+            font-weight: 700;
+            margin-left: -2.5rem;
+            margin-right: 1rem;
+        }
+
+        .moat-point {
+            background-color: #1e293b;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 4px;
+            border-left: 3px solid #10b981;
+        }
+
+        .moat-point strong {
+            color: #10b981;
+        }
+
+        footer {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 2px solid #1e293b;
+            margin-top: 3rem;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        .highlight {
+            background-color: rgba(6, 182, 212, 0.1);
+            padding: 0.2rem 0.4rem;
+            border-radius: 2px;
+            color: #06b6d4;
+        }
+
+        .grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2col {
+                grid-template-columns: 1fr;
+            }
+
+            .pipeline-flow {
+                flex-direction: column;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            h2 {
+                font-size: 1.4rem;
+            }
+        }
+
+        .exec-summary-box {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(6, 182, 212, 0.1) 100%);
+            border: 1px solid #334155;
+            border-left: 4px solid #10b981;
+            padding: 1.5rem;
+            border-radius: 6px;
+            margin: 2rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>The Autonomous Software Engineering Gap</h1>
+            <p class="subtitle">Business & Technical Analysis: How the Auto Dev Agent bridges the chasm between AI app generators and AI coding assistants</p>
+        </header>
+
+        <div class="toc">
+            <h3>Table of Contents</h3>
+            <ol>
+                <li><a href="#executive-summary">Executive Summary</a></li>
+                <li><a href="#market-landscape">Market Landscape</a></li>
+                <li><a href="#five-gaps">The Five Critical Gaps</a></li>
+                <li><a href="#integration-gap">The Critical Integration Gap</a></li>
+                <li><a href="#roadmap">Implementation Roadmap</a></li>
+                <li><a href="#moat">Competitive Moat</a></li>
+            </ol>
+        </div>
+
+        <section id="executive-summary">
+            <h2>Executive Summary</h2>
+            <div class="exec-summary-box">
+                <p>The AI software engineering market has a critical gap: <span class="highlight">Lovable generates complete apps from prompts</span> but ships untested code with no quality enforcement. <span class="highlight">Claude provides deep reasoning and world-class code generation</span> but stops at the code review stage—no deployment, no testing loop, no autonomy. Neither tool (nor most competitors) delivers production-grade software engineering on existing codebases with configurable autonomy and quality gates.</p>
+                <p>This gap represents a <strong>massive market opportunity</strong>. The Autonomous Dev Agent fills it by combining:</p>
+                <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                    <li>Codebase-aware context (not file-level)</li>
+                    <li>Closed-loop quality enforcement with configurable gates</li>
+                    <li>Configurable human-in-the-loop (not all-or-nothing autonomy)</li>
+                    <li>Multi-model cost optimization</li>
+                    <li>Error learning and recovery with memory</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="market-landscape">
+            <h2>Market Landscape: Competitive Comparison</h2>
+            <div class="section-intro">
+                <p>Below is a comprehensive comparison of how existing tools perform against critical software engineering requirements. Note the gaps where traditional competitors fall short.</p>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Capability</th>
+                        <th>Lovable</th>
+                        <th>Claude / Claude Code</th>
+                        <th>Cursor / Copilot</th>
+                        <th>Devin</th>
+                        <th>Auto Dev Agent</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Quality Gates (Testing, Linting, SAST)</strong></td>
+                        <td><span class="indicator-fail">✗</span></td>
+                        <td><span class="indicator-fail">✗</span></td>
+                        <td><span class="indicator-fail">✗</span></td>
+                        <td><span class="indicator-partial">△</span></td>
+                        <td><span class="indicator-pass">✓</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Codebase Intelligence (Full Project Context)</strong></td>
+                        <td><span class="indicator-fail">✗</span></td>
+                        <td><span class="indicator-fail">✗</span></td>
+                        <td><span class="indicator-partial">△</span></td>
+                        <td><span class="indicator-partial">△</span></td>
+                        <td><span class="indicator-pass">✓</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Configurable Autonomy Levels</strong></td>
+                        <td><span class="indicator-fail">✗ (Full)</span></td>
+                        <td><span class="indicator-fail">✗ (None)</span></td>
+                        <td><span class="indicator-fail">✗ (None)</span></td>
+                        <td><span class="indicator-partial">△</span></td>
+                        <td><span class="indicator-pass">✓</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Multi-Model Cost Routing</strong></td>
+                        <td><span class="indicator-fail">✗</span></td>
+                        <td><span class="indicator-fail">✗</span></td>
+                        <td><span class="indicator-fail">✗</span></td>
+                        <td><span class="indicator-fail">✗</span></td>
+                        <td><span class="indicator-pass">✓</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Error Recovery with Learning</strong></td>
+                        <td><span class="indicator-fail">✗</span></td>
+                        <td><span class="indicator-fail">✗</span></td>
+                        <td><span class="indicator-fail">✗</span></td>
+                        <td><span class="indicator-fail">✗</span></td>
+                        <td><span class="indicator-pass">✓</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Existing Codebase Support</strong></td>
+                        <td><span class="indicator-fail">✗ (New only)</span></td>
+                        <td><span class="indicator-partial">△</span></td>
+                        <td><span class="indicator-partial">△</span></td>
+                        <td><span class="indicator-partial">△</span></td>
+                        <td><span class="indicator-pass">✓</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Deployment to Production</strong></td>
+                        <td><span class="indicator-fail">✗</span></td>
+                        <td><span class="indicator-fail">✗</span></td>
+                        <td><span class="indicator-fail">✗</span></td>
+                        <td><span class="indicator-partial">△</span></td>
+                        <td><span class="indicator-pass">✓</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Self-Hosted / Transparent</strong></td>
+                        <td><span class="indicator-fail">✗</span></td>
+                        <td><span class="indicator-pass">✓</span></td>
+                        <td><span class="indicator-fail">✗</span></td>
+                        <td><span class="indicator-fail">✗</span></td>
+                        <td><span class="indicator-pass">✓</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section id="five-gaps">
+            <h2>The Five Critical Gaps</h2>
+
+            <div class="gap-card">
+                <div class="gap-number">GAP 1</div>
+                <h3 class="gap-title">Closed-Loop Quality Enforcement</h3>
+
+                <div class="gap-subsection">
+                    <h5>The Problem</h5>
+                    <p>Generated code is shipped to production without rigorous, automated verification. Teams either trust the tool's output or manually verify everything—both unsustainable at scale.</p>
+                </div>
+
+                <div class="gap-subsection">
+                    <h5>Why Existing Tools Fail</h5>
+                    <p><strong>Lovable:</strong> No integrated test suite or quality gates. <strong>Claude:</strong> Stops after code generation—verification is manual. <strong>Copilot:</strong> Suggests code but never verifies it runs or passes checks. <strong>Devin:</strong> Some test execution, but not configurable quality gates.</p>
+                </div>
+
+                <div class="gap-subsection">
+                    <h5>Our Solution</h5>
+                    <p>An <span class="highlight">orchestrator state machine</span> (ANALYZING → PLANNING → CODING → REVIEWING → TESTING → DEPLOYING → VERIFYING) with configurable quality gates:</p>
+                    <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                        <li><strong>Code Coverage ≥80%</strong> (configurable threshold)</li>
+                        <li><strong>Linting</strong> (ESLint, Pylint, etc.)</li>
+                        <li><strong>Type Checking</strong> (TypeScript, mypy)</li>
+                        <li><strong>SAST (Static Application Security Testing)</strong></li>
+                        <li><strong>Dependency Audit</strong> (security vulnerabilities)</li>
+                    </ul>
+                    <p style="margin-top: 1rem;">The agent iterates up to N times until <strong>ALL gates pass</strong>. Failures trigger error recovery with context enrichment.</p>
+                </div>
+
+                <div class="diagram">
+                    <strong>Orchestrator State Machine:</strong>
+                    <div class="pipeline-flow">
+                        <div class="pipeline-box box-implemented">ANALYZING</div>
+                        <div class="arrow">→</div>
+                        <div class="pipeline-box box-implemented">PLANNING</div>
+                        <div class="arrow">→</div>
+                        <div class="pipeline-box box-implemented">CODING</div>
+                        <div class="arrow">→</div>
+                        <div class="pipeline-box box-implemented">REVIEWING</div>
+                        <div class="arrow">→</div>
+                        <div class="pipeline-box box-implemented">TESTING</div>
+                        <div class="arrow">→</div>
+                        <div class="pipeline-box box-implemented">DEPLOYING</div>
+                        <div class="arrow">→</div>
+                        <div class="pipeline-box box-partial">VERIFYING</div>
+                    </div>
+                </div>
+
+                <span class="status-badge status-implemented">✓ Implemented</span>
+                <p style="font-size: 0.85rem; margin-top: 0.5rem; color: #94a3b8;">Orchestrator, quality gates, test runner, build runner, and reviewer components all operational.</p>
+            </div>
+
+            <div class="gap-card">
+                <div class="gap-number">GAP 2</div>
+                <h3 class="gap-title">Codebase Intelligence on Existing Projects</h3>
+
+                <div class="gap-subsection">
+                    <h5>The Problem</h5>
+                    <p>AI tools either start from scratch (Lovable) or understand only the file currently open. This makes intelligent modifications to existing codebases nearly impossible—conventions go undetected, API surfaces are missed, and architectural patterns are ignored.</p>
+                </div>
+
+                <div class="gap-subsection">
+                    <h5>Why Existing Tools Fail</h5>
+                    <p><strong>Lovable:</strong> Generates new apps only. <strong>Claude:</strong> Loses context between sessions; can only work with code explicitly pasted in. <strong>Cursor:</strong> Sees ~10 files at a time. <strong>Devin:</strong> Limited codebase analysis despite reading files.</p>
+                </div>
+
+                <div class="gap-subsection">
+                    <h5>Our Solution</h5>
+                    <p>Full project indexing with <span class="highlight">AST parsing, dependency graphs, convention detection, and semantic search</span>:</p>
+                    <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                        <li><strong>AST Indexing:</strong> Parse every file into an abstract syntax tree for precise symbol location</li>
+                        <li><strong>Dependency Graphs:</strong> Understand import structures, circular dependencies, and module hierarchy</li>
+                        <li><strong>Convention Detection:</strong> Learn naming patterns, folder structure, and framework conventions automatically</li>
+                        <li><strong>Symbol Tables:</strong> Maintain searchable registry of all classes, functions, constants, and types</li>
+                        <li><strong>TF-IDF Semantic Search:</strong> Find similar code patterns and reference implementations</li>
+                    </ul>
+                    <p style="margin-top: 1rem;">The agent understands your <strong>entire codebase</strong> with session persistence.</p>
+                </div>
+
+                <div class="diagram">
+                    <strong>Codebase Intelligence Pipeline:</strong>
+                    <div class="pipeline-flow">
+                        <div class="pipeline-box box-implemented">AST Parser</div>
+                        <div class="arrow">→</div>
+                        <div class="pipeline-box box-implemented">Dependency Graph</div>
+                        <div class="arrow">→</div>
+                        <div class="pipeline-box box-implemented">Convention Detector</div>
+                        <div class="arrow">→</div>
+                        <div class="pipeline-box box-implemented">Symbol Table</div>
+                        <div class="arrow">→</div>
+                        <div class="pipeline-box box-implemented">Semantic Search</div>
+                    </div>
+                </div>
+
+                <span class="status-badge status-implemented">✓ Implemented</span>
+                <p style="font-size: 0.85rem; margin-top: 0.5rem; color: #94a3b8;">All indexing components functional and queryable.</p>
+            </div>
+
+            <div class="gap-card">
+                <div class="gap-number">GAP 3</div>
+                <h3 class="gap-title">Configurable Human-in-the-Loop Autonomy</h3>
+
+                <div class="gap-subsection">
+                    <h5>The Problem</h5>
+                    <p>Teams face a false choice: either fully autonomous (risky; code ships without review) or fully manual (slow; constant human steering required). There's no middle ground where safe operations run freely but high-risk moments pause for human approval.</p>
+                </div>
+
+                <div class="gap-subsection">
+                    <h5>Why Existing Tools Fail</h5>
+                    <p><strong>Lovable:</strong> Fire-and-forget, zero approval gates. <strong>Claude:</strong> Requires constant human steering for every step. <strong>Devin:</strong> Minimal approval points; not configurable. <strong>Copilot:</strong> Suggestion-only; no autonomy.</p>
+                </div>
+
+                <div class="gap-subsection">
+                    <h5>Our Solution</h5>
+                    <p>5 independently configurable approval gates, each can be enabled/disabled:</p>
+                    <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                        <li><strong>pre_code:</strong> Review plan before code generation</li>
+                        <li><strong>pre_deploy:</strong> Approve deployment to staging/production</li>
+                        <li><strong>pre_production:</strong> Extra gate for prod-only changes</li>
+                        <li><strong>budget_exceeded:</strong> Pause if cost exceeds threshold</li>
+                        <li><strong>ambiguity_detected:</strong> Ask human when intent is unclear</li>
+                    </ul>
+                    <p style="margin-top: 1rem;">The agent runs freely for safe operations, pauses and requests human review at high-risk moments. Approvals include comment capabilities for context.</p>
+                </div>
+
+                <div class="diagram">
+                    <strong>Approval Gate Configuration:</strong>
+                    <div style="margin-top: 1rem;">
+                        <div style="background-color: #064e3b; border-left: 4px solid #10b981; padding: 0.75rem; margin-bottom: 0.5rem; border-radius: 4px;">
+                            <strong style="color: #10b981;">✓ Enabled:</strong> pre_deploy, budget_exceeded
+                        </div>
+                        <div style="background-color: #1e293b; border-left: 4px solid #94a3b8; padding: 0.75rem; border-radius: 4px;">
+                            <strong style="color: #94a3b8;">○ Disabled:</strong> pre_code, pre_production, ambiguity_detected
+                        </div>
+                    </div>
+                </div>
+
+                <span class="status-badge status-implemented">✓ Implemented</span>
+                <p style="font-size: 0.85rem; margin-top: 0.5rem; color: #94a3b8;">Approval gate framework, ops API, and workspace UI approval center all operational.</p>
+            </div>
+
+            <div class="gap-card">
+                <div class="gap-number">GAP 4</div>
+                <h3 class="gap-title">Multi-Model Cost-Optimized Routing</h3>
+
+                <div class="gap-subsection">
+                    <h5>The Problem</h5>
+                    <p>Using one model for all tasks wastes money on simple operations (analysis, documentation) while underperforming on complex ones (error diagnosis, refactoring). Teams either overpay or sacrifice quality.</p>
+                </div>
+
+                <div class="gap-subsection">
+                    <h5>Why Existing Tools Fail</h5>
+                    <p><strong>Lovable, Claude, Devin:</strong> Single model for everything. <strong>Cursor:</strong> Supports manual switching but not intelligent routing. <strong>OpenAI:</strong> No integrated orchestration across models.</p>
+                </div>
+
+                <div class="gap-subsection">
+                    <h5>Our Solution</h5>
+                    <p>Intelligent LLM Router with cost optimization:</p>
+                    <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                        <li><strong>4 Providers:</strong> Anthropic, OpenAI, Gemini, Ollama (self-hosted)</li>
+                        <li><strong>9 Task Categories:</strong> Analysis, planning, code generation, test generation, code review, error diagnosis, refactoring, documentation, general</li>
+                        <li><strong>3 Tiers:</strong> Low (simple tasks), Mid (medium complexity), Top (complex/high-stakes)</li>
+                        <li><strong>Cost Budgets:</strong> Per-story ($5), daily ($100), monthly ($2000)</li>
+                        <li><strong>Fallback Chains:</strong> If primary provider fails, route to backup automatically</li>
+                        <li><strong>Provider Health Checks:</strong> Skip unavailable providers; route around outages</li>
+                    </ul>
+                </div>
+
+                <div class="diagram">
+                    <strong>LLM Router Task-to-Provider Mapping:</strong>
+                    <div style="margin-top: 1rem;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div style="background-color: #1e293b; padding: 0.75rem; border-radius: 4px; border-left: 3px solid #06b6d4;">
+                                <strong style="color: #06b6d4;">Simple Tasks (Tier: Low)</strong><br>
+                                <small style="color: #94a3b8;">→ Ollama/Gemini<br>Cost: &lt;$0.01</small>
+                            </div>
+                            <div style="background-color: #1e293b; padding: 0.75rem; border-radius: 4px; border-left: 3px solid #f59e0b;">
+                                <strong style="color: #f59e0b;">Medium Tasks (Tier: Mid)</strong><br>
+                                <small style="color: #94a3b8;">→ OpenAI/Gemini<br>Cost: $0.01–$0.10</small>
+                            </div>
+                            <div style="background-color: #1e293b; padding: 0.75rem; border-radius: 4px; border-left: 3px solid #10b981;">
+                                <strong style="color: #10b981;">Complex Tasks (Tier: Top)</strong><br>
+                                <small style="color: #94a3b8;">→ Claude 3.5 Sonnet<br>Cost: $0.10–$1.00</small>
+                            </div>
+                            <div style="background-color: #1e293b; padding: 0.75rem; border-radius: 4px; border-left: 3px solid #ef4444;">
+                                <strong style="color: #ef4444;">Error Recovery</strong><br>
+                                <small style="color: #94a3b8;">→ Provider fallback<br>Auto-reroute on failure</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <span class="status-badge status-implemented">✓ Implemented</span>
+                <p style="font-size: 0.85rem; margin-top: 0.5rem; color: #94a3b8;">Router, 4 provider integrations, task classification, and budget enforcement all functional.</p>
+            </div>
+
+            <div class="gap-card">
+                <div class="gap-number">GAP 5</div>
+                <h3 class="gap-title">Error Recovery with Learning and Memory</h3>
+
+                <div class="gap-subsection">
+                    <h5>The Problem</h5>
+                    <p>When code fails, teams start from scratch. No learning occurs. Repeated failures on the same problem waste time and money.</p>
+                </div>
+
+                <div class="gap-subsection">
+                    <h5>Why Existing Tools Fail</h5>
+                    <p><strong>Lovable:</strong> No error handling at all. <strong>Claude:</strong> Requires manual error pasting and re-prompting. <strong>Copilot:</strong> Doesn't track failures. <strong>Devin:</strong> Limited error taxonomy and no cross-session learning.</p>
+                </div>
+
+                <div class="gap-subsection">
+                    <h5>Our Solution</h5>
+                    <p>Sophisticated error recovery with learning:</p>
+                    <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                        <li><strong>8-Category Error Taxonomy:</strong> Syntax, type, runtime, logical, security, performance, integration, unknown</li>
+                        <li><strong>SHA-256 Fingerprinting:</strong> Unique error signatures for deduplication and tracking</li>
+                        <li><strong>Progressive Context Enrichment:</strong> Attempt 1: error only → Attempt 5: broad context + top-tier model</li>
+                        <li><strong>Oscillation Detection:</strong> Prevent infinite loops by detecting repeated failures</li>
+                        <li><strong>Known-Fix Database:</strong> Store and retrieve solutions for common errors</li>
+                        <li><strong>Multi-Tier Memory:</strong> Working (current session), episodic (past attempts), semantic (patterns), procedural (how-tos), project (codebase-specific)</li>
+                        <li><strong>Similarity Retrieval:</strong> Jaccard similarity to find related errors across sessions</li>
+                        <li><strong>Convergence Detection:</strong> Know when recovery is impossible; fail gracefully</li>
+                    </ul>
+                </div>
+
+                <div class="diagram">
+                    <strong>Error Recovery Progressive Escalation:</strong>
+                    <div style="margin-top: 1rem;">
+                        <div style="background-color: #1e293b; padding: 0.75rem; margin-bottom: 0.5rem; border-radius: 4px; border-left: 4px solid #06b6d4;">
+                            <strong style="color: #06b6d4;">Attempt 1–2:</strong> <span style="color: #94a3b8;">Error message + code snippet</span>
+                        </div>
+                        <div style="background-color: #1e293b; padding: 0.75rem; margin-bottom: 0.5rem; border-radius: 4px; border-left: 4px solid #f59e0b;">
+                            <strong style="color: #f59e0b;">Attempt 3–4:</strong> <span style="color: #94a3b8;">+ AST context, related symbols, test output</span>
+                        </div>
+                        <div style="background-color: #1e293b; padding: 0.75rem; border-radius: 4px; border-left: 4px solid #10b981;">
+                            <strong style="color: #10b981;">Attempt 5+:</strong> <span style="color: #94a3b8;">+ full codebase, known fixes, Sonnet tier model, team knowledge</span>
+                        </div>
+                    </div>
+                </div>
+
+                <span class="status-badge status-implemented">✓ Implemented</span>
+                <p style="font-size: 0.85rem; margin-top: 0.5rem; color: #94a3b8;">Classifier, recovery engine, convergence detector, and memory store all operational.</p>
+            </div>
+        </section>
+
+        <section id="integration-gap">
+            <h2>The Critical Integration Gap: What's Actually Missing</h2>
+
+            <div class="section-intro">
+                <p><strong>Despite all 5 gap components being individually implemented,</strong> there is ONE critical blocker preventing end-to-end execution: the <span class="highlight">main.py entry point initializes all components as None</span>, meaning the complete pipeline never actually executes.</p>
+            </div>
+
+            <h3>Current State: 14 Real Components, Zero Orchestration</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Component</th>
+                        <th>Status</th>
+                        <th>Role in Pipeline</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Orchestrator</td>
+                        <td><span class="indicator-pass">✓ Implemented</span></td>
+                        <td>State machine (ANALYZING → VERIFYING)</td>
+                    </tr>
+                    <tr>
+                        <td>AST Indexer</td>
+                        <td><span class="indicator-pass">✓ Implemented</span></td>
+                        <td>Parse codebase into symbols</td>
+                    </tr>
+                    <tr>
+                        <td>Dependency Graph</td>
+                        <td><span class="indicator-pass">✓ Implemented</span></td>
+                        <td>Map imports and module hierarchy</td>
+                    </tr>
+                    <tr>
+                        <td>Convention Detector</td>
+                        <td><span class="indicator-pass">✓ Implemented</span></td>
+                        <td>Learn folder structure &amp; naming patterns</td>
+                    </tr>
+                    <tr>
+                        <td>Semantic Search</td>
+                        <td><span class="indicator-pass">✓ Implemented</span></td>
+                        <td>Find similar code patterns</td>
+                    </tr>
+                    <tr>
+                        <td>LLM Router</td>
+                        <td><span class="indicator-pass">✓ Implemented</span></td>
+                        <td>Route tasks to optimal model/provider</td>
+                    </tr>
+                    <tr>
+                        <td>Approval Gate</td>
+                        <td><span class="indicator-pass">✓ Implemented</span></td>
+                        <td>Configurable human checkpoints</td>
+                    </tr>
+                    <tr>
+                        <td>Error Classifier</td>
+                        <td><span class="indicator-pass">✓ Implemented</span></td>
+                        <td>Categorize and fingerprint errors</td>
+                    </tr>
+                    <tr>
+                        <td>Error Recovery</td>
+                        <td><span class="indicator-pass">✓ Implemented</span></td>
+                        <td>Progressive escalation and learning</td>
+                    </tr>
+                    <tr>
+                        <td>Memory Store</td>
+                        <td><span class="indicator-pass">✓ Implemented</span></td>
+                        <td>Multi-tier knowledge persistence</td>
+                    </tr>
+                    <tr>
+                        <td>Convergence Detector</td>
+                        <td><span class="indicator-pass">✓ Implemented</span></td>
+                        <td>Prevent infinite loops</td>
+                    </tr>
+                    <tr>
+                        <td>Test Runner</td>
+                        <td><span class="indicator-pass">✓ Implemented</span></td>
+                        <td>Execute and measure test coverage</td>
+                    </tr>
+                    <tr>
+                        <td>Build Runner</td>
+                        <td><span class="indicator-pass">✓ Implemented</span></td>
+                        <td>Compile/bundle code; run linting</td>
+                    </tr>
+                    <tr>
+                        <td>Code Reviewer</td>
+                        <td><span class="indicator-pass">✓ Implemented</span></td>
+                        <td>Static analysis and quality scoring</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Deployer</strong></td>
+                        <td><span class="indicator-fail">✗ Protocol only</span></td>
+                        <td><strong>Deploy to staging/production</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Verification</strong></td>
+                        <td><span class="indicator-fail">✗ Stub only</span></td>
+                        <td><strong>Smoke tests and monitoring</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>main.py Wiring</strong></td>
+                        <td><span class="indicator-fail">✗ All None</span></td>
+                        <td><strong>Initialize and connect all components</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>The Pipeline Diagram: Current State vs. Needed</h3>
+
+            <div class="diagram">
+                <strong>Current Implementation Status:</strong>
+                <div class="pipeline-flow" style="margin-top: 1.5rem;">
+                    <div class="pipeline-box box-implemented">Story Input</div>
+                    <div class="arrow">→</div>
+                    <div class="pipeline-box box-implemented">Analyze</div>
+                    <div class="arrow">→</div>
+                    <div class="pipeline-box box-implemented">Plan</div>
+                    <div class="arrow">→</div>
+                    <div class="pipeline-box box-implemented">Code</div>
+                    <div class="arrow">→</div>
+                    <div class="pipeline-box box-implemented">Review</div>
+                    <div class="arrow">→</div>
+                    <div class="pipeline-box box-implemented">Test</div>
+                    <div class="arrow">→</div>
+                    <div class="pipeline-box box-partial">Deploy</div>
+                    <div class="arrow">→</div>
+                    <div class="pipeline-box box-missing">Verify</div>
+                </div>
+                <p style="margin-top: 1.5rem; font-size: 0.9rem; color: #94a3b8;">
+                    <strong>Problem:</strong> All components exist but <code style="background-color: #0f172a; padding: 0.2rem 0.4rem; border-radius: 2px;">main.py</code> doesn't instantiate them. The orchestrator, indexer, router, and recovery engine are built but never initialized.
+                </p>
+            </div>
+
+            <h3>Specific Blockers</h3>
+            <div class="comparison-grid">
+                <div class="comparison-item">
+                    <h4>main.py Initialization</h4>
+                    <p>All component variables are <code style="background-color: #0f172a; padding: 0.2rem 0.4rem; border-radius: 2px;">= None</code>. Need to instantiate and inject dependencies.</p>
+                </div>
+                <div class="comparison-item">
+                    <h4>Deployer Implementation</h4>
+                    <p>Protocol defined but no concrete implementation. Need Docker/K8s support, rollback logic, blue-green deployment.</p>
+                </div>
+                <div class="comparison-item">
+                    <h4>Verification Module</h4>
+                    <p>Stub function only. Need smoke tests, canary metrics, health checks, rollback triggers.</p>
+                </div>
+                <div class="comparison-item">
+                    <h4>End-to-End Testing</h4>
+                    <p>No integration tests covering full story → deployment → verification flow.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="roadmap">
+            <h2>Implementation Roadmap: Closing the Final Gap</h2>
+
+            <div class="section-intro">
+                <p>These are the prioritized steps to transition the Auto Dev Agent from component library to production-grade autonomous software engineering platform.</p>
+            </div>
+
+            <ul class="roadmap-list">
+                <li>
+                    <strong>Phase 1: Main Loop Wiring</strong><br>
+                    Refactor <code style="background-color: #0f172a; padding: 0.2rem 0.4rem; border-radius: 2px;">main.py</code> to instantiate all 14 real components and inject dependencies. Wire orchestrator input→output to each module. Estimated: 1–2 weeks.
+                </li>
+                <li>
+                    <strong>Phase 2: Deployer Implementation</strong><br>
+                    Build concrete deployment module with Docker image building, Kubernetes manifests, blue-green deployment, health checks, and automated rollback on verification failure. Estimated: 2–3 weeks.
+                </li>
+                <li>
+                    <strong>Phase 3: Verification & Monitoring</strong><br>
+                    Implement smoke tests, canary metrics collection, alerting integration, and production monitoring. Connect to observability stack. Estimated: 1–2 weeks.
+                </li>
+                <li>
+                    <strong>Phase 4: End-to-End Integration Testing</strong><br>
+                    Build test harnesses for full story→deploy→verify flows. Create synthetic projects for regression testing. Estimated: 1–2 weeks.
+                </li>
+                <li>
+                    <strong>Phase 5: Production Hardening</strong><br>
+                    Error handling, rate limiting, auth/RBAC, audit logging, cost controls, graceful degradation. Security review and penetration testing. Estimated: 2–3 weeks.
+                </li>
+            </ul>
+
+            <p style="margin-top: 2rem; padding: 1rem; background-color: #1e293b; border-left: 4px solid #10b981; border-radius: 4px;">
+                <strong>Total Timeline:</strong> 7–12 weeks to production readiness. Once Phase 1 is complete, all five gaps are simultaneously closed (components are already built).
+            </p>
+        </section>
+
+        <section id="moat">
+            <h2>Competitive Moat: Why This Is Hard to Replicate</h2>
+
+            <div class="moat-point">
+                <strong>1. Multi-Provider Routing with Cost Intelligence</strong><br>
+                <span style="color: #cbd5e1;">No competitor has implemented task-specific model routing with per-story/daily/monthly budgets and provider fallback chains. This requires deep integration with 4+ model APIs and sophisticated cost tracking.</span>
+            </div>
+
+            <div class="moat-point">
+                <strong>2. Codebase-Aware Context (Not File-Level)</strong><br>
+                <span style="color: #cbd5e1;">AST parsing + dependency graphs + convention detection across entire projects is data-intensive and slow to build. Most competitors only see open files or code pasted into chat. This is a 3–6 month engineering effort.</span>
+            </div>
+
+            <div class="moat-point">
+                <strong>3. Configurable Autonomy (Not All-or-Nothing)</strong><br>
+                <span style="color: #cbd5e1;">Lovable is fully autonomous; Claude is fully manual. We have 5 independently configurable gates. This requires careful UX, approval center UI, and state management that most competitors haven't built.</span>
+            </div>
+
+            <div class="moat-point">
+                <strong>4. Cross-Session Error Learning</strong><br>
+                <span style="color: #cbd5e1;">Multi-tier memory (working, episodic, semantic, procedural, project) with Jaccard similarity and known-fix database is novel. No competitor tracks error patterns and solutions across sessions.</span>
+            </div>
+
+            <div class="moat-point">
+                <strong>5. Self-Hosted + Transparent</strong><br>
+                <span style="color: #cbd5e1;">Unlike Lovable, Cursor, or Devin (all proprietary/closed), the Auto Dev Agent can run fully on-premise with Ollama or custom models. This appeals to enterprises with data governance requirements.</span>
+            </div>
+
+            <div class="moat-point">
+                <strong>6. Quality Enforcement at Scale</strong><br>
+                <span style="color: #cbd5e1;">Orchestrator state machine with configurable quality gates (coverage, linting, SAST, dependency audit) integrated into the main loop. Competitors stop before verification; we enforce it automatically.</span>
+            </div>
+        </section>
+
+        <footer>
+            <p>Auto Dev Agent v3.1.0 — Confidential Internal Document</p>
+            <p style="margin-top: 0.5rem; color: #475569;">Generated April 4, 2026</p>
+        </footer>
+    </div>
+</body>
+</html>

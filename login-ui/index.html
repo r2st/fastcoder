@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In - DevAgent</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', system-ui, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #root { width: 100%; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+
+        .auth-container {
+            width: 100%; max-width: 440px; padding: 20px;
+        }
+
+        /* Logo */
+        .logo-section {
+            text-align: center; margin-bottom: 32px;
+        }
+        .logo-icon {
+            width: 56px; height: 56px; border-radius: 16px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            display: inline-flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 24px; font-weight: 800; margin-bottom: 12px;
+        }
+        .logo-title { font-size: 22px; font-weight: 700; color: #0f172a; }
+        .logo-subtitle { font-size: 14px; color: #64748b; margin-top: 4px; }
+
+        /* Card */
+        .auth-card {
+            background: #fff; border-radius: 16px; padding: 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);
+            border: 1px solid #e5e7eb;
+        }
+
+        /* Tabs */
+        .tab-row {
+            display: flex; gap: 0; margin-bottom: 24px;
+            background: #f1f5f9; border-radius: 10px; padding: 4px;
+        }
+        .tab-btn {
+            flex: 1; padding: 10px 0; text-align: center; font-size: 14px; font-weight: 600;
+            border: none; background: none; cursor: pointer; border-radius: 8px;
+            color: #64748b; transition: all 0.15s;
+        }
+        .tab-btn.active { background: #fff; color: #0f172a; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+
+        /* Form */
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px; }
+        .form-input {
+            width: 100%; padding: 11px 14px; border: 1px solid #d1d5db; border-radius: 10px;
+            font-size: 14px; color: #0f172a; background: #fff; transition: all 0.15s;
+            font-family: inherit;
+        }
+        .form-input:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+        .form-input::placeholder { color: #9ca3af; }
+
+        /* Password toggle */
+        .input-wrap { position: relative; }
+        .pw-toggle {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; cursor: pointer; color: #94a3b8;
+            font-size: 16px; padding: 4px;
+        }
+        .pw-toggle:hover { color: #475569; }
+
+        /* Buttons */
+        .btn {
+            width: 100%; padding: 12px 16px; border: none; border-radius: 10px;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            transition: all 0.15s; font-family: inherit;
+        }
+        .btn-primary { background: #6366f1; color: #fff; }
+        .btn-primary:hover { background: #4f46e5; }
+        .btn-primary:disabled { background: #a5b4fc; cursor: not-allowed; }
+
+        /* Divider */
+        .divider {
+            display: flex; align-items: center; gap: 12px;
+            margin: 20px 0; color: #94a3b8; font-size: 13px;
+        }
+        .divider::before, .divider::after {
+            content: ''; flex: 1; height: 1px; background: #e5e7eb;
+        }
+
+        /* OAuth buttons */
+        .oauth-grid { display: flex; flex-direction: column; gap: 10px; }
+        .oauth-btn {
+            width: 100%; padding: 11px 16px; border: 1px solid #d1d5db; border-radius: 10px;
+            font-size: 14px; font-weight: 500; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            transition: all 0.15s; background: #fff; color: #1e293b; font-family: inherit;
+        }
+        .oauth-btn:hover { background: #f8fafc; border-color: #94a3b8; }
+        .oauth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .oauth-btn.google { }
+        .oauth-btn.github { }
+        .oauth-btn.microsoft { }
+        .oauth-btn.apple { }
+        .oauth-btn.gitlab { }
+        .oauth-btn.bitbucket { }
+
+        .oauth-icon {
+            width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;
+        }
+
+        /* Error / Success */
+        .alert { padding: 12px 16px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .alert-error { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+        .alert-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+
+        /* Footer */
+        .auth-footer {
+            text-align: center; margin-top: 20px; font-size: 13px; color: #64748b;
+        }
+        .auth-footer a { color: #6366f1; text-decoration: none; font-weight: 600; }
+        .auth-footer a:hover { text-decoration: underline; }
+
+        /* Password strength */
+        .pw-strength { margin-top: 6px; }
+        .pw-bar { height: 4px; border-radius: 2px; background: #e5e7eb; overflow: hidden; }
+        .pw-bar-fill { height: 100%; border-radius: 2px; transition: width 0.3s, background 0.3s; }
+        .pw-text { font-size: 11px; margin-top: 4px; }
+
+        /* Loading spinner */
+        .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .auth-card { padding: 24px 20px; }
+            .auth-container { padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        /* ── SVG Icons for OAuth providers ── */
+        const GoogleIcon = () => (
+            <svg className="oauth-icon" viewBox="0 0 24 24" width="20" height="20">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+        );
+
+        const GitHubIcon = () => (
+            <svg className="oauth-icon" viewBox="0 0 24 24" width="20" height="20" fill="#24292f">
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+            </svg>
+        );
+
+        const MicrosoftIcon = () => (
+            <svg className="oauth-icon" viewBox="0 0 23 23" width="20" height="20">
+                <rect fill="#f25022" x="1" y="1" width="10" height="10"/>
+                <rect fill="#00a4ef" x="1" y="12" width="10" height="10"/>
+                <rect fill="#7fba00" x="12" y="1" width="10" height="10"/>
+                <rect fill="#ffb900" x="12" y="12" width="10" height="10"/>
+            </svg>
+        );
+
+        const AppleIcon = () => (
+            <svg className="oauth-icon" viewBox="0 0 24 24" width="20" height="20" fill="#000">
+                <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+            </svg>
+        );
+
+        const GitLabIcon = () => (
+            <svg className="oauth-icon" viewBox="0 0 24 24" width="20" height="20">
+                <path fill="#E24329" d="M12 22.185l3.357-10.332H8.643z"/>
+                <path fill="#FC6D26" d="M12 22.185L8.643 11.853H1.38z"/>
+                <path fill="#FCA326" d="M1.38 11.853l-.522 1.607a1.01 1.01 0 0 0 .367 1.13L12 22.185z"/>
+                <path fill="#E24329" d="M1.38 11.853h7.263L5.24 1.58a.51.51 0 0 0-.97 0z"/>
+                <path fill="#FC6D26" d="M12 22.185l3.357-10.332h7.263z"/>
+                <path fill="#FCA326" d="M22.62 11.853l.522 1.607a1.01 1.01 0 0 1-.367 1.13L12 22.185z"/>
+                <path fill="#E24329" d="M22.62 11.853h-7.263L18.76 1.58a.51.51 0 0 1 .97 0z"/>
+            </svg>
+        );
+
+        const BitbucketIcon = () => (
+            <svg className="oauth-icon" viewBox="0 0 24 24" width="20" height="20">
+                <path fill="#2684FF" d="M.778 1.213a.768.768 0 0 0-.768.892l3.263 19.81c.084.5.515.868 1.022.873H19.95a.772.772 0 0 0 .77-.646L24.013 2.1a.77.77 0 0 0-.768-.892zM14.52 15.53H9.522L8.17 8.466h7.561z"/>
+            </svg>
+        );
+
+        const providerIcons = {
+            google: GoogleIcon, github: GitHubIcon, microsoft: MicrosoftIcon,
+            apple: AppleIcon, gitlab: GitLabIcon, bitbucket: BitbucketIcon,
+        };
+        const providerLabels = {
+            google: 'Google', github: 'GitHub', microsoft: 'Microsoft',
+            apple: 'Apple', gitlab: 'GitLab', bitbucket: 'Bitbucket',
+        };
+
+        /* ── Password Strength ── */
+        function getPasswordStrength(pw) {
+            if (!pw) return { score: 0, label: '', color: '#e5e7eb' };
+            let score = 0;
+            if (pw.length >= 8) score++;
+            if (pw.length >= 12) score++;
+            if (/[A-Z]/.test(pw)) score++;
+            if (/[0-9]/.test(pw)) score++;
+            if (/[^A-Za-z0-9]/.test(pw)) score++;
+            const levels = [
+                { label: 'Very weak', color: '#ef4444' },
+                { label: 'Weak', color: '#f97316' },
+                { label: 'Fair', color: '#eab308' },
+                { label: 'Good', color: '#22c55e' },
+                { label: 'Strong', color: '#16a34a' },
+            ];
+            const idx = Math.min(score, levels.length) - 1;
+            return { score, label: levels[Math.max(idx, 0)].label, color: levels[Math.max(idx, 0)].color, pct: (score / 5) * 100 };
+        }
+
+        /* ── Main App ── */
+        function AuthApp() {
+            const [mode, setMode] = useState('login'); // 'login' | 'register'
+            const [providers, setProviders] = useState([]);
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [displayName, setDisplayName] = useState('');
+            const [showPw, setShowPw] = useState(false);
+            const [loading, setLoading] = useState(false);
+            const [oauthLoading, setOauthLoading] = useState('');
+            const [error, setError] = useState('');
+            const [success, setSuccess] = useState('');
+
+            // Redirect destination and session context from URL params
+            const redirectTo = new URLSearchParams(window.location.search).get('redirect') || '/';
+            const sessionContext = redirectTo.startsWith('/admin') ? 'admin' : 'workspace';
+
+            // Check for error in URL params
+            useEffect(() => {
+                const params = new URLSearchParams(window.location.search);
+                const urlError = params.get('error');
+                if (urlError) setError(urlError);
+            }, []);
+
+            // Check if already logged in for the relevant context
+            // (skip redirect if there's an error — user may need to re-auth)
+            useEffect(() => {
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('error')) return;
+                fetch(`/auth/me?context=${sessionContext}`, { credentials: 'include' })
+                    .then(r => { if (r.ok) window.location.href = redirectTo; })
+                    .catch(() => {});
+            }, []);
+
+            // Load available providers
+            useEffect(() => {
+                fetch('/auth/providers')
+                    .then(r => r.json())
+                    .then(d => setProviders(d.providers || ['email']))
+                    .catch(() => setProviders(['email']));
+            }, []);
+
+            const oauthProviders = providers.filter(p => p !== 'email');
+            const pwStrength = getPasswordStrength(password);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setError(''); setSuccess('');
+
+                if (!email.trim()) { setError('Please enter your email'); return; }
+                if (!password) { setError('Please enter your password'); return; }
+                if (mode === 'register' && !displayName.trim()) { setError('Please enter your name'); return; }
+                if (mode === 'register' && password.length < 8) { setError('Password must be at least 8 characters'); return; }
+
+                setLoading(true);
+                try {
+                    const endpoint = mode === 'register' ? '/auth/register' : '/auth/login';
+                    const body = mode === 'register'
+                        ? { email, password, display_name: displayName, context: sessionContext }
+                        : { email, password, context: sessionContext };
+
+                    const res = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify(body),
+                    });
+
+                    const data = await res.json();
+                    if (!res.ok) {
+                        setError(data.detail || 'Something went wrong');
+                        return;
+                    }
+
+                    setSuccess(data.message || 'Success!');
+                    setTimeout(() => { window.location.href = redirectTo; }, 500);
+                } catch (err) {
+                    setError('Network error. Please check your connection.');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleOAuth = async (provider) => {
+                setError(''); setOauthLoading(provider);
+                try {
+                    const res = await fetch(`/auth/oauth/${provider}/login?context=${sessionContext}`);
+                    const data = await res.json();
+                    if (data.auth_url) {
+                        window.location.href = data.auth_url;
+                    } else {
+                        setError('Could not start sign-in. Please try again.');
+                        setOauthLoading('');
+                    }
+                } catch {
+                    setError('Network error. Please check your connection.');
+                    setOauthLoading('');
+                }
+            };
+
+            return (
+                <div className="auth-container">
+                    <div className="logo-section">
+                        <div className="logo-icon">D</div>
+                        <div className="logo-title">DevAgent</div>
+                        <div className="logo-subtitle">
+                            {sessionContext === 'admin'
+                                ? 'Admin Panel Login'
+                                : 'Your AI development assistant'}
+                        </div>
+                    </div>
+
+                    <div className="auth-card">
+                        {/* Tabs — hide registration for admin login (admins are created from admin panel) */}
+                        <div className="tab-row">
+                            <button className={`tab-btn ${mode === 'login' ? 'active' : ''}`} onClick={() => { setMode('login'); setError(''); }}>Sign In</button>
+                            {sessionContext !== 'admin' && (
+                                <button className={`tab-btn ${mode === 'register' ? 'active' : ''}`} onClick={() => { setMode('register'); setError(''); }}>Create Account</button>
+                            )}
+                        </div>
+
+                        {/* Alerts */}
+                        {error && <div className="alert alert-error"><span>⚠</span> {error}</div>}
+                        {success && <div className="alert alert-success"><span>✓</span> {success}</div>}
+
+                        {/* OAuth Buttons */}
+                        {oauthProviders.length > 0 && (
+                            <>
+                                <div className="oauth-grid">
+                                    {oauthProviders.map(p => {
+                                        const Icon = providerIcons[p];
+                                        const label = providerLabels[p] || p;
+                                        return (
+                                            <button key={p} className={`oauth-btn ${p}`} onClick={() => handleOAuth(p)} disabled={!!oauthLoading}>
+                                                {oauthLoading === p ? <div className="spinner" style={{borderColor:'rgba(0,0,0,0.15)',borderTopColor:'#475569'}} /> : (Icon ? <Icon /> : null)}
+                                                {mode === 'login' ? `Sign in with ${label}` : `Sign up with ${label}`}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                <div className="divider">or continue with email</div>
+                            </>
+                        )}
+
+                        {/* Email Form */}
+                        <form onSubmit={handleSubmit}>
+                            {mode === 'register' && (
+                                <div className="form-group">
+                                    <label className="form-label">Full Name</label>
+                                    <input type="text" className="form-input" placeholder="Jane Smith" value={displayName} onChange={e => setDisplayName(e.target.value)} autoComplete="name" />
+                                </div>
+                            )}
+
+                            <div className="form-group">
+                                <label className="form-label">Email Address</label>
+                                <input type="email" className="form-input" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Password</label>
+                                <div className="input-wrap">
+                                    <input
+                                        type={showPw ? 'text' : 'password'}
+                                        className="form-input"
+                                        placeholder={mode === 'register' ? 'At least 8 characters' : 'Enter your password'}
+                                        value={password}
+                                        onChange={e => setPassword(e.target.value)}
+                                        autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                                        style={{paddingRight: 42}}
+                                    />
+                                    <button type="button" className="pw-toggle" onClick={() => setShowPw(!showPw)} tabIndex={-1}>
+                                        {showPw ? '🙈' : '👁'}
+                                    </button>
+                                </div>
+                                {mode === 'register' && password && (
+                                    <div className="pw-strength">
+                                        <div className="pw-bar">
+                                            <div className="pw-bar-fill" style={{width: `${pwStrength.pct}%`, background: pwStrength.color}} />
+                                        </div>
+                                        <div className="pw-text" style={{color: pwStrength.color}}>{pwStrength.label}</div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <button type="submit" className="btn btn-primary" disabled={loading}>
+                                {loading ? <><div className="spinner" /> Processing...</> : (mode === 'login' ? 'Sign In' : 'Create Account')}
+                            </button>
+                        </form>
+                    </div>
+
+                    <div className="auth-footer">
+                        {mode === 'login'
+                            ? <>Don't have an account? <a href="#" onClick={e => { e.preventDefault(); setMode('register'); setError(''); }}>Create one</a></>
+                            : <>Already have an account? <a href="#" onClick={e => { e.preventDefault(); setMode('login'); setError(''); }}>Sign in</a></>
+                        }
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<AuthApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>

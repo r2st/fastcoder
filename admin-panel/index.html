@@ -1,0 +1,2723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto-Dev Agent — Admin</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <style>
+        /* ═══════════════════════════════════════════════════════
+           DESIGN SYSTEM — Premium Dark UI
+           ═══════════════════════════════════════════════════════ */
+        :root {
+            /* Core palette */
+            --bg-base: #0a0e1a;
+            --bg-surface: #111827;
+            --bg-elevated: #1a2235;
+            --bg-overlay: #1e293b;
+            --bg-hover: rgba(99, 102, 241, 0.06);
+            --bg-active: rgba(99, 102, 241, 0.1);
+
+            /* Glass */
+            --glass-bg: rgba(17, 24, 39, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.06);
+            --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+
+            /* Brand */
+            --accent: #818cf8;
+            --accent-light: #a5b4fc;
+            --accent-dark: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.25);
+            --accent-subtle: rgba(99, 102, 241, 0.08);
+
+            /* Semantic */
+            --success: #34d399;
+            --success-bg: rgba(52, 211, 153, 0.1);
+            --warning: #fbbf24;
+            --warning-bg: rgba(251, 191, 36, 0.1);
+            --error: #f87171;
+            --error-bg: rgba(248, 113, 113, 0.1);
+            --info: #60a5fa;
+            --info-bg: rgba(96, 165, 250, 0.1);
+
+            /* Text */
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --text-dim: #475569;
+
+            /* Borders */
+            --border: rgba(255, 255, 255, 0.06);
+            --border-light: rgba(255, 255, 255, 0.1);
+            --border-accent: rgba(99, 102, 241, 0.3);
+
+            /* Layout */
+            --sidebar-width: 260px;
+            --sidebar-collapsed: 72px;
+            --header-height: 64px;
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            --radius-full: 9999px;
+
+            /* Animation */
+            --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+            --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+            --duration-fast: 150ms;
+            --duration-normal: 250ms;
+            --duration-slow: 400ms;
+
+            /* Extras */
+            --purple: #c084fc;
+            --orange: #fb923c;
+            --teal: #2dd4bf;
+            --pink: #f472b6;
+        }
+
+        /* ── Reset & Base ── */
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-base);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow: hidden;
+        }
+
+        /* Noise texture overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.02'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--text-dim); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        /* ── Layout ── */
+        .app-container { display: flex; height: 100vh; position: relative; z-index: 1; }
+
+        /* ═══════════════════════════════════════════════════════
+           SIDEBAR
+           ═══════════════════════════════════════════════════════ */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            transition: width var(--duration-slow) var(--ease-out);
+            overflow: hidden;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 100;
+        }
+        .sidebar.mini { width: var(--sidebar-collapsed); }
+        .sidebar.mini .nav-label,
+        .sidebar.mini .nav-section-label,
+        .sidebar.mini .sidebar-brand-text,
+        .sidebar.mini .sidebar-footer-text { opacity: 0; width: 0; overflow: hidden; }
+        .sidebar.mini .nav-item { justify-content: center; padding: 0.75rem; }
+        .sidebar.mini .nav-item .nav-icon { margin: 0; }
+        .sidebar.mini .sidebar-header { justify-content: center; padding: 1rem 0.5rem; }
+        .sidebar.mini .sidebar-footer { padding: 0.75rem 0.5rem; }
+
+        .sidebar-header {
+            padding: 1.25rem 1.25rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            border-bottom: 1px solid var(--border);
+            min-height: 64px;
+        }
+
+        .sidebar-brand-icon {
+            width: 36px; height: 36px;
+            background: linear-gradient(135deg, var(--accent-dark), var(--accent-light));
+            border-radius: var(--radius-md);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem; font-weight: 800; color: white;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px var(--accent-glow);
+        }
+
+        .sidebar-brand-text {
+            font-size: 1rem; font-weight: 700; color: var(--text-primary);
+            white-space: nowrap;
+            transition: opacity var(--duration-normal) var(--ease-out);
+        }
+        .sidebar-brand-sub { font-size: 0.65rem; color: var(--text-muted); font-weight: 400; letter-spacing: 0.05em; text-transform: uppercase; }
+
+        .sidebar-nav { flex: 1; overflow-y: auto; padding: 0.5rem 0; }
+
+        .nav-section { padding: 0.5rem 0; }
+        .nav-section-label {
+            padding: 0.5rem 1.25rem 0.25rem;
+            font-size: 0.65rem; font-weight: 600;
+            letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--text-dim);
+            transition: opacity var(--duration-normal) var(--ease-out);
+            white-space: nowrap;
+        }
+
+        .nav-item {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.6rem 1.25rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all var(--duration-fast) ease;
+            position: relative;
+            border-radius: 0;
+            margin: 1px 0;
+            white-space: nowrap;
+        }
+        .nav-item::before {
+            content: '';
+            position: absolute; left: 0; top: 0; bottom: 0;
+            width: 3px; border-radius: 0 3px 3px 0;
+            background: var(--accent);
+            transform: scaleY(0);
+            transition: transform var(--duration-normal) var(--ease-spring);
+        }
+        .nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .nav-item.active {
+            background: var(--bg-active); color: var(--accent-light);
+        }
+        .nav-item.active::before { transform: scaleY(1); }
+
+        .nav-icon {
+            width: 20px; height: 20px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            opacity: 0.7;
+        }
+        .nav-item:hover .nav-icon,
+        .nav-item.active .nav-icon { opacity: 1; }
+
+        .nav-label { font-size: 0.85rem; font-weight: 500; transition: opacity var(--duration-normal) var(--ease-out); }
+
+        .sidebar-footer {
+            padding: 0.75rem 1.25rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.7rem; color: var(--text-dim);
+            display: flex; align-items: center; gap: 0.5rem;
+            white-space: nowrap;
+        }
+        .sidebar-footer-text { transition: opacity var(--duration-normal) var(--ease-out); }
+
+        .sidebar-toggle {
+            width: 24px; height: 24px;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--bg-overlay); border: 1px solid var(--border);
+            border-radius: var(--radius-full);
+            cursor: pointer; color: var(--text-muted);
+            position: absolute; right: -12px; top: 76px;
+            z-index: 200;
+            transition: all var(--duration-fast) ease;
+            font-size: 0.65rem;
+        }
+        .sidebar-toggle:hover { background: var(--accent); color: white; border-color: var(--accent); }
+        .sidebar.mini .sidebar-toggle svg { transform: rotate(180deg); }
+
+        /* ═══════════════════════════════════════════════════════
+           MAIN CONTENT
+           ═══════════════════════════════════════════════════════ */
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+        /* ── Header ── */
+        .header {
+            height: var(--header-height);
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px) saturate(1.5);
+            -webkit-backdrop-filter: blur(16px) saturate(1.5);
+            border-bottom: 1px solid var(--border);
+            padding: 0 1.5rem;
+            display: flex; justify-content: space-between; align-items: center;
+            flex-shrink: 0;
+            z-index: 50;
+        }
+        .header-left { display: flex; align-items: center; gap: 1rem; }
+        .header-right { display: flex; align-items: center; gap: 0.75rem; }
+
+        .header-title { font-size: 1.1rem; font-weight: 600; color: var(--text-primary); }
+        .header-breadcrumb { font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem; }
+        .header-breadcrumb-sep { color: var(--text-dim); }
+
+        .header-search {
+            display: flex; align-items: center; gap: 0.5rem;
+            background: var(--bg-overlay); border: 1px solid var(--border);
+            border-radius: var(--radius-full);
+            padding: 0.4rem 0.75rem;
+            cursor: pointer;
+            transition: all var(--duration-fast) ease;
+            color: var(--text-muted); font-size: 0.8rem;
+        }
+        .header-search:hover { border-color: var(--border-light); color: var(--text-secondary); }
+        .header-search kbd {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: 4px; padding: 1px 5px; font-size: 0.65rem;
+            font-family: inherit; color: var(--text-dim);
+        }
+
+        .user-avatar {
+            width: 32px; height: 32px;
+            background: linear-gradient(135deg, var(--accent-dark), var(--purple));
+            border-radius: var(--radius-full);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.75rem; font-weight: 600; color: white;
+            flex-shrink: 0;
+        }
+
+        .user-menu {
+            display: flex; align-items: center; gap: 0.6rem;
+            padding: 0.35rem 0.6rem 0.35rem 0.35rem;
+            border-radius: var(--radius-full);
+            cursor: pointer;
+            transition: all var(--duration-fast) ease;
+            border: 1px solid transparent;
+        }
+        .user-menu:hover { background: var(--bg-hover); border-color: var(--border); }
+        .user-name { font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); }
+
+        /* ── Content Area ── */
+        .content-area {
+            flex: 1; overflow-y: auto; padding: 1.75rem 2rem;
+            scroll-behavior: smooth;
+        }
+        .content-area > * { max-width: 1200px; }
+
+        /* ═══════════════════════════════════════════════════════
+           COMMAND PALETTE
+           ═══════════════════════════════════════════════════════ */
+        .cmd-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 9000;
+            display: flex; align-items: flex-start; justify-content: center;
+            padding-top: 20vh;
+            animation: cmdFadeIn 150ms ease;
+        }
+        @keyframes cmdFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .cmd-palette {
+            width: 520px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--border);
+            overflow: hidden;
+            animation: cmdSlideUp 200ms var(--ease-out);
+        }
+        @keyframes cmdSlideUp { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: none; } }
+
+        .cmd-input-wrap {
+            display: flex; align-items: center; gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .cmd-input-wrap svg { color: var(--text-muted); flex-shrink: 0; }
+        .cmd-input {
+            flex: 1; background: none; border: none; outline: none;
+            color: var(--text-primary); font-size: 0.95rem; font-family: inherit;
+        }
+        .cmd-input::placeholder { color: var(--text-dim); }
+
+        .cmd-results { max-height: 320px; overflow-y: auto; padding: 0.5rem; }
+        .cmd-item {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.6rem 0.75rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: background var(--duration-fast) ease;
+            color: var(--text-secondary); font-size: 0.85rem;
+        }
+        .cmd-item:hover, .cmd-item.active { background: var(--bg-active); color: var(--text-primary); }
+        .cmd-item-icon { width: 20px; text-align: center; opacity: 0.6; }
+        .cmd-item-label { flex: 1; }
+        .cmd-item-hint { font-size: 0.7rem; color: var(--text-dim); }
+        .cmd-empty { padding: 2rem; text-align: center; color: var(--text-dim); font-size: 0.85rem; }
+
+        /* ═══════════════════════════════════════════════════════
+           COMPONENTS
+           ═══════════════════════════════════════════════════════ */
+
+        /* ── Page transitions ── */
+        .page-fade { animation: pageFade var(--duration-normal) var(--ease-out); }
+        @keyframes pageFade {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── Page header ── */
+        .page-header { margin-bottom: 1.75rem; }
+        .page-title {
+            font-size: 1.5rem; font-weight: 700; color: var(--text-primary);
+            letter-spacing: -0.02em; margin-bottom: 0.25rem;
+        }
+        .page-subtitle { font-size: 0.85rem; color: var(--text-muted); }
+
+        /* ── Cards ── */
+        .card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 1.25rem;
+            transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
+        }
+        .card:hover { border-color: var(--border-light); box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15); }
+        .card-glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 1.25rem;
+        }
+
+        /* ── Stat Cards ── */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.75rem;
+        }
+        .stat-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            position: relative;
+            overflow: hidden;
+            transition: all var(--duration-normal) var(--ease-out);
+        }
+        .stat-card::after {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, var(--accent), transparent);
+            opacity: 0;
+            transition: opacity var(--duration-normal) ease;
+        }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2); }
+        .stat-card:hover::after { opacity: 1; }
+
+        .stat-icon {
+            width: 40px; height: 40px;
+            border-radius: var(--radius-md);
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 0.75rem;
+            font-size: 1.1rem;
+        }
+        .stat-icon.accent { background: var(--accent-subtle); color: var(--accent-light); }
+        .stat-icon.success { background: var(--success-bg); color: var(--success); }
+        .stat-icon.warning { background: var(--warning-bg); color: var(--warning); }
+        .stat-icon.error { background: var(--error-bg); color: var(--error); }
+        .stat-icon.info { background: var(--info-bg); color: var(--info); }
+
+        .stat-label { font-size: 0.75rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.35rem; }
+        .stat-value { font-size: 1.75rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; line-height: 1.2; }
+        .stat-unit { font-size: 0.8rem; color: var(--text-muted); font-weight: 400; margin-left: 0.25rem; }
+        .stat-change { font-size: 0.75rem; margin-top: 0.25rem; display: flex; align-items: center; gap: 0.25rem; }
+        .stat-change.up { color: var(--success); }
+        .stat-change.down { color: var(--error); }
+
+        /* ── Progress ── */
+        .progress-bar {
+            width: 100%; height: 6px;
+            background: var(--bg-overlay); border-radius: 3px;
+            overflow: hidden; margin-top: 0.75rem;
+        }
+        .progress-fill {
+            height: 100%; border-radius: 3px;
+            background: linear-gradient(90deg, var(--accent-dark), var(--accent-light));
+            transition: width var(--duration-slow) var(--ease-out);
+            position: relative;
+        }
+        .progress-fill::after {
+            content: '';
+            position: absolute; inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            animation: shimmer 2s infinite;
+        }
+        @keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+
+        /* ── Buttons ── */
+        .btn {
+            padding: 0.55rem 1.1rem;
+            border: none; border-radius: var(--radius-md);
+            font-size: 0.8rem; font-weight: 500; font-family: inherit;
+            cursor: pointer;
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            transition: all var(--duration-fast) ease;
+            white-space: nowrap;
+        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+        .btn:active:not(:disabled) { transform: scale(0.97); }
+
+        .btn-primary {
+            background: var(--accent-dark); color: white;
+            box-shadow: 0 1px 3px rgba(99, 102, 241, 0.3);
+        }
+        .btn-primary:hover:not(:disabled) { background: var(--accent); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35); }
+
+        .btn-secondary { background: var(--bg-overlay); color: var(--text-secondary); border: 1px solid var(--border); }
+        .btn-secondary:hover:not(:disabled) { background: var(--bg-elevated); color: var(--text-primary); border-color: var(--border-light); }
+
+        .btn-danger { background: rgba(248, 113, 113, 0.15); color: var(--error); border: 1px solid rgba(248, 113, 113, 0.2); }
+        .btn-danger:hover:not(:disabled) { background: rgba(248, 113, 113, 0.25); }
+
+        .btn-ghost { background: transparent; color: var(--text-secondary); }
+        .btn-ghost:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-primary); }
+
+        .btn-sm { padding: 0.4rem 0.75rem; font-size: 0.75rem; border-radius: var(--radius-sm); }
+        .btn-group { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+
+        /* ── Forms ── */
+        .form-group { margin-bottom: 1.25rem; }
+        .form-label {
+            display: block; margin-bottom: 0.4rem;
+            font-size: 0.8rem; font-weight: 500; color: var(--text-secondary);
+        }
+        .form-helper {
+            display: block; margin-top: 0.35rem;
+            font-size: 0.72rem; color: var(--text-dim); line-height: 1.4;
+        }
+
+        .form-input, .form-textarea, .form-select {
+            width: 100%; padding: 0.6rem 0.85rem;
+            background: var(--bg-overlay);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 0.85rem; font-family: inherit;
+            transition: all var(--duration-fast) ease;
+        }
+        .form-input::placeholder, .form-textarea::placeholder { color: var(--text-dim); }
+        .form-input:focus, .form-textarea:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+        .form-input:disabled, .form-textarea:disabled, .form-select:disabled {
+            opacity: 0.5; cursor: not-allowed;
+        }
+
+        .form-select {
+            appearance: none; -webkit-appearance: none;
+            padding-right: 2.5rem;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2364748b' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 0.85rem center;
+            cursor: pointer;
+        }
+        .form-select option { background: var(--bg-surface); color: var(--text-primary); }
+
+        .form-textarea {
+            resize: vertical; min-height: 90px;
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            font-size: 0.8rem; line-height: 1.5;
+        }
+
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+        .form-error { color: var(--error); font-size: 0.75rem; margin-top: 0.25rem; }
+
+        .form-inline {
+            display: flex; align-items: center; gap: 0.75rem;
+        }
+
+        /* ── Toggles ── */
+        .toggle-switch {
+            position: relative; display: inline-flex;
+            width: 44px; height: 24px;
+            background: var(--bg-overlay); border-radius: 12px;
+            cursor: pointer; border: 1px solid var(--border);
+            transition: all var(--duration-normal) var(--ease-out);
+            flex-shrink: 0;
+        }
+        .toggle-switch::after {
+            content: ''; position: absolute;
+            top: 2px; left: 2px;
+            width: 20px; height: 20px;
+            background: var(--text-muted); border-radius: 50%;
+            transition: all var(--duration-normal) var(--ease-spring);
+        }
+        .toggle-switch.active { background: var(--accent-dark); border-color: var(--accent); }
+        .toggle-switch.active::after { left: 22px; background: white; }
+
+        /* ── Badges ── */
+        .badge {
+            display: inline-flex; align-items: center; gap: 0.3rem;
+            padding: 0.2rem 0.55rem;
+            border-radius: var(--radius-full);
+            font-size: 0.7rem; font-weight: 600;
+            letter-spacing: 0.02em; text-transform: uppercase;
+        }
+        .badge-blue { background: var(--info-bg); color: var(--info); }
+        .badge-green { background: var(--success-bg); color: var(--success); }
+        .badge-yellow { background: var(--warning-bg); color: var(--warning); }
+        .badge-red { background: var(--error-bg); color: var(--error); }
+        .badge-purple { background: rgba(192, 132, 252, 0.12); color: var(--purple); }
+        .badge-orange { background: rgba(251, 146, 60, 0.12); color: var(--orange); }
+
+        .badge-dot { width: 6px; height: 6px; border-radius: 50%; }
+        .badge-dot.green { background: var(--success); }
+        .badge-dot.red { background: var(--error); }
+        .badge-dot.pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        /* ── Tables ── */
+        .table-wrapper { overflow-x: auto; border-radius: var(--radius-lg); border: 1px solid var(--border); }
+        table { width: 100%; border-collapse: collapse; }
+        thead { background: var(--bg-elevated); }
+        th {
+            padding: 0.75rem 1rem; text-align: left;
+            font-size: 0.7rem; font-weight: 600; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--border);
+        }
+        td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; color: var(--text-secondary); }
+        tbody tr { transition: background var(--duration-fast) ease; }
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr:hover { background: var(--bg-hover); }
+
+        /* ── Toasts ── */
+        .toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 10000; display: flex; flex-direction: column; gap: 0.5rem; }
+
+        .toast {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 0.75rem 1rem;
+            display: flex; align-items: center; gap: 0.75rem;
+            min-width: 280px; max-width: 420px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+            animation: toastIn 300ms var(--ease-out);
+            font-size: 0.85rem;
+        }
+        .toast.success { border-left: 3px solid var(--success); }
+        .toast.error { border-left: 3px solid var(--error); }
+        .toast.info { border-left: 3px solid var(--info); }
+        .toast-icon { font-size: 1rem; flex-shrink: 0; }
+        .toast-msg { flex: 1; color: var(--text-secondary); }
+        .toast-close {
+            background: none; border: none; color: var(--text-dim);
+            cursor: pointer; padding: 0; font-size: 1rem;
+            transition: color var(--duration-fast) ease;
+        }
+        .toast-close:hover { color: var(--text-primary); }
+        @keyframes toastIn { from { opacity: 0; transform: translateX(100px); } to { opacity: 1; transform: none; } }
+
+        /* ── Modals ── */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 8000;
+            animation: cmdFadeIn 150ms ease;
+        }
+        .modal {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 1.75rem; max-width: 440px; width: 90%;
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+        }
+        .modal-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.75rem; }
+        .modal-body { margin-bottom: 1.25rem; color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5; }
+        .modal-footer { display: flex; gap: 0.6rem; justify-content: flex-end; }
+
+        /* ── Provider Cards ── */
+        .provider-card {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            margin-bottom: 0.75rem;
+            transition: all var(--duration-fast) ease;
+        }
+        .provider-card:hover { border-color: var(--border-light); }
+        .provider-card-header { display: flex; justify-content: space-between; align-items: center; }
+        .provider-name { font-size: 0.95rem; font-weight: 600; }
+        .provider-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem; }
+        .provider-status {
+            display: inline-flex; align-items: center; gap: 0.35rem;
+            padding: 0.2rem 0.6rem; border-radius: var(--radius-full);
+            font-size: 0.7rem; font-weight: 600;
+        }
+        .provider-status.enabled { background: var(--success-bg); color: var(--success); }
+        .provider-status.disabled { background: var(--error-bg); color: var(--error); }
+
+        /* ── Story Items ── */
+        .story-item {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 1.15rem 1.25rem;
+            margin-bottom: 0.6rem;
+            display: flex; justify-content: space-between; align-items: start;
+            transition: all var(--duration-fast) ease;
+            border-left: 3px solid var(--border);
+        }
+        .story-item:hover { border-color: var(--border-light); background: var(--bg-elevated); }
+        .story-item.state-received { border-left-color: var(--info); }
+        .story-item.state-analyzing { border-left-color: var(--warning); }
+        .story-item.state-coding { border-left-color: var(--purple); }
+        .story-item.state-testing { border-left-color: var(--orange); }
+        .story-item.state-done { border-left-color: var(--success); }
+        .story-item.state-failed { border-left-color: var(--error); }
+
+        .story-info { flex: 1; min-width: 0; }
+        .story-id { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.15rem; }
+        .story-desc { font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .story-meta { font-size: 0.72rem; color: var(--text-dim); }
+
+        /* ── Empty States ── */
+        .empty-state { text-align: center; padding: 3rem 2rem; }
+        .empty-state-icon {
+            width: 56px; height: 56px;
+            background: var(--bg-overlay); border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 1rem; font-size: 1.5rem;
+        }
+        .empty-state-title { font-size: 1rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; }
+        .empty-state-text { font-size: 0.82rem; color: var(--text-dim); max-width: 360px; margin: 0 auto; line-height: 1.5; }
+
+        /* ── Setup Callout ── */
+        .setup-callout {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(52, 211, 153, 0.05));
+            border: 1px solid rgba(99, 102, 241, 0.15);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex; align-items: flex-start; gap: 1rem;
+        }
+        .setup-callout-icon {
+            width: 40px; height: 40px;
+            background: var(--accent-subtle); border-radius: var(--radius-md);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem; flex-shrink: 0;
+        }
+        .setup-callout-title { font-weight: 600; color: var(--accent-light); margin-bottom: 0.15rem; font-size: 0.9rem; }
+        .setup-callout-desc { font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5; }
+        .setup-callout-action {
+            display: inline-flex; align-items: center; gap: 0.3rem;
+            margin-top: 0.5rem; font-size: 0.8rem;
+            color: var(--accent-light); cursor: pointer; font-weight: 500;
+            text-decoration: none;
+            transition: color var(--duration-fast) ease;
+        }
+        .setup-callout-action:hover { color: white; }
+
+        /* ── Filter Tabs ── */
+        .filter-tabs { display: flex; gap: 0.35rem; margin-bottom: 1.25rem; }
+        .filter-tab {
+            padding: 0.35rem 0.85rem; border-radius: var(--radius-full);
+            font-size: 0.75rem; font-weight: 500;
+            background: transparent; color: var(--text-muted);
+            border: 1px solid transparent;
+            cursor: pointer; transition: all var(--duration-fast) ease;
+        }
+        .filter-tab:hover { color: var(--text-primary); background: var(--bg-hover); }
+        .filter-tab.active { background: var(--accent-subtle); color: var(--accent-light); border-color: var(--border-accent); }
+
+        /* ── Settings Groups ── */
+        .settings-group {
+            border: 1px solid var(--border); border-radius: var(--radius-lg);
+            padding: 1.25rem; margin-bottom: 1.25rem;
+        }
+        .settings-group-title {
+            font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.06em; color: var(--text-dim); margin-bottom: 1rem;
+        }
+        .settings-item {
+            display: flex; justify-content: space-between; align-items: center;
+            gap: 1rem; padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .settings-item:last-child { border-bottom: none; padding-bottom: 0; }
+        .settings-item:first-child { padding-top: 0; }
+        .settings-item-content { flex: 1; }
+        .settings-item-label { font-weight: 500; font-size: 0.85rem; color: var(--text-primary); margin-bottom: 0.1rem; }
+        .settings-item-description { font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; }
+
+        /* ── Callout ── */
+        .callout {
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            border-radius: var(--radius-md);
+            padding: 0.85rem 1.15rem;
+            background: var(--accent-subtle);
+            margin-bottom: 1.25rem;
+        }
+        .callout-title { font-weight: 600; color: var(--accent-light); margin-bottom: 0.25rem; font-size: 0.85rem; }
+        .callout-text { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; }
+
+        /* ── Expandable ── */
+        .expandable-header {
+            display: flex; justify-content: space-between; align-items: center;
+            cursor: pointer; padding: 0.65rem 0.85rem;
+            background: var(--bg-overlay); border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            margin-top: 0.75rem; font-size: 0.82rem; color: var(--text-secondary);
+            transition: all var(--duration-fast) ease;
+        }
+        .expandable-header:hover { background: var(--bg-elevated); color: var(--text-primary); }
+        .expandable-content {
+            margin-top: 0.5rem; padding: 0.85rem;
+            background: var(--bg-overlay); border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+        }
+
+        /* ── Slider ── */
+        .slider {
+            width: 100%; height: 6px; border-radius: 3px;
+            background: var(--bg-overlay); outline: none;
+            -webkit-appearance: none; appearance: none;
+        }
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px; height: 18px; border-radius: 50%;
+            background: var(--accent); cursor: pointer;
+            box-shadow: 0 1px 4px rgba(99, 102, 241, 0.4);
+            transition: all var(--duration-fast) ease;
+        }
+        .slider::-webkit-slider-thumb:hover { background: var(--accent-light); box-shadow: 0 0 12px var(--accent-glow); }
+        .slider::-moz-range-thumb {
+            width: 18px; height: 18px; border-radius: 50%;
+            background: var(--accent); cursor: pointer; border: none;
+        }
+        .slider-container { display: flex; align-items: center; gap: 1rem; }
+        .slider-value { min-width: 50px; text-align: right; color: var(--accent-light); font-weight: 600; font-size: 0.9rem; }
+
+        .coverage-low { color: var(--error); }
+        .coverage-medium { color: var(--warning); }
+        .coverage-high { color: var(--success); }
+
+        /* ── Budget Gauge ── */
+        .budget-gauge {
+            width: 140px; height: 140px; border-radius: 50%; margin: 0 auto;
+            background: conic-gradient(
+                var(--accent) 0deg,
+                var(--accent-light) calc(var(--gauge-percentage) * 3.6deg),
+                var(--bg-overlay) calc(var(--gauge-percentage) * 3.6deg),
+                var(--bg-overlay) 360deg
+            );
+            display: flex; align-items: center; justify-content: center;
+            padding: 4px;
+        }
+        .budget-gauge-inner {
+            width: 100%; height: 100%; border-radius: 50%;
+            background: var(--bg-surface);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .budget-gauge-value { font-size: 1.5rem; font-weight: 700; color: var(--accent-light); }
+        .budget-gauge-label { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; }
+
+        /* ── Loading / Spinner ── */
+        .loading { display: flex; justify-content: center; align-items: center; padding: 3rem; }
+        .spinner {
+            width: 32px; height: 32px;
+            border: 3px solid var(--border); border-top-color: var(--accent);
+            border-radius: 50%; animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Skeleton ── */
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-overlay) 25%, var(--bg-elevated) 50%, var(--bg-overlay) 75%);
+            background-size: 200% 100%;
+            animation: skeletonPulse 1.8s ease-in-out infinite;
+            border-radius: var(--radius-sm);
+        }
+        @keyframes skeletonPulse { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        .skeleton-text { height: 14px; margin-bottom: 0.75rem; }
+        .skeleton-title { height: 24px; width: 40%; margin-bottom: 1rem; }
+        .skeleton-card { height: 120px; margin-bottom: 1rem; border-radius: var(--radius-lg); }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            .sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 1000; transform: translateX(-100%); }
+            .sidebar.mobile-open { transform: translateX(0); }
+            .sidebar-toggle { display: none; }
+            .mobile-toggle { display: flex !important; }
+            .content-area { padding: 1rem; }
+            .form-row { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .settings-item { flex-direction: column; align-items: flex-start; }
+        }
+
+        .mobile-toggle { display: none; }
+        .mobile-backdrop {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999; display: none;
+        }
+        .mobile-backdrop.show { display: block; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+        /* ═══════════════════════════════════════════════════════
+           SVG ICONS
+           ═══════════════════════════════════════════════════════ */
+        const Icons = {
+            dashboard: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+                </svg>
+            ),
+            project: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                </svg>
+            ),
+            llm: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+                </svg>
+            ),
+            routing: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/>
+                    <polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/>
+                    <line x1="4" y1="4" x2="9" y2="9"/>
+                </svg>
+            ),
+            cost: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+            ),
+            safety: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+            ),
+            quality: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+            ),
+            observability: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                </svg>
+            ),
+            stories: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+                </svg>
+            ),
+            auth: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+            ),
+            search: (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+            ),
+            logout: (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+            ),
+            chevronLeft: (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="15 18 9 12 15 6"/>
+                </svg>
+            ),
+            chevronDown: (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="6 9 12 15 18 9"/>
+                </svg>
+            ),
+            chevronRight: (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="9 18 15 12 9 6"/>
+                </svg>
+            ),
+            menu: (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>
+            ),
+            star: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+            ),
+            check: (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+            ),
+            x: (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            ),
+            refresh: (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                </svg>
+            ),
+            server: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
+                    <line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>
+                </svg>
+            ),
+            activity: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+            ),
+            cpu: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/>
+                    <line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/>
+                    <line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/>
+                    <line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/>
+                    <line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/>
+                </svg>
+            ),
+            memory: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="6" width="20" height="12" rx="2"/><line x1="6" y1="12" x2="6" y2="12"/>
+                    <line x1="10" y1="12" x2="10" y2="12"/><line x1="14" y1="12" x2="14" y2="12"/>
+                    <line x1="18" y1="12" x2="18" y2="12"/>
+                </svg>
+            ),
+        };
+
+        /* ═══════════════════════════════════════════════════════
+           TOAST MANAGER
+           ═══════════════════════════════════════════════════════ */
+        const ToastManager = () => {
+            const [toasts, setToasts] = useState([]);
+
+            useEffect(() => {
+                window.showToast = (message, type = 'info', duration = 3500) => {
+                    const id = Date.now();
+                    setToasts(prev => [...prev, { id, message, type }]);
+                    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), duration);
+                };
+            }, []);
+
+            const icons = { success: '\u2713', error: '\u2717', info: '\u2139' };
+
+            return (
+                <div className="toast-container">
+                    {toasts.map(t => (
+                        <div key={t.id} className={`toast ${t.type}`}>
+                            <span className="toast-icon">{icons[t.type] || icons.info}</span>
+                            <span className="toast-msg">{t.message}</span>
+                            <button className="toast-close" onClick={() => setToasts(p => p.filter(x => x.id !== t.id))}>&times;</button>
+                        </div>
+                    ))}
+                </div>
+            );
+        };
+
+        /* ═══════════════════════════════════════════════════════
+           CONFIRM MODAL
+           ═══════════════════════════════════════════════════════ */
+        const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="modal-overlay" onClick={onCancel}>
+                    <div className="modal" onClick={e => e.stopPropagation()}>
+                        <div className="modal-title">{title}</div>
+                        <div className="modal-body">{message}</div>
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
+                            <button className="btn btn-danger" onClick={onConfirm}>Confirm</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        /* ═══════════════════════════════════════════════════════
+           COMMAND PALETTE
+           ═══════════════════════════════════════════════════════ */
+        const CommandPalette = ({ isOpen, onClose, onNavigate, sections }) => {
+            const [query, setQuery] = useState('');
+            const [selectedIdx, setSelectedIdx] = useState(0);
+            const inputRef = useRef(null);
+
+            const allItems = useMemo(() => {
+                const items = [];
+                Object.entries(sections).forEach(([key, sec]) => {
+                    items.push({ key, label: sec.label, icon: sec.icon, section: sec.section || 'Navigate' });
+                });
+                return items;
+            }, [sections]);
+
+            const filtered = useMemo(() => {
+                if (!query) return allItems;
+                const q = query.toLowerCase();
+                return allItems.filter(i => i.label.toLowerCase().includes(q) || i.key.toLowerCase().includes(q));
+            }, [query, allItems]);
+
+            useEffect(() => {
+                if (isOpen) {
+                    setQuery('');
+                    setSelectedIdx(0);
+                    setTimeout(() => inputRef.current?.focus(), 50);
+                }
+            }, [isOpen]);
+
+            const handleKeyDown = (e) => {
+                if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIdx(i => Math.min(i + 1, filtered.length - 1)); }
+                else if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIdx(i => Math.max(i - 1, 0)); }
+                else if (e.key === 'Enter' && filtered[selectedIdx]) { onNavigate(filtered[selectedIdx].key); onClose(); }
+                else if (e.key === 'Escape') { onClose(); }
+            };
+
+            if (!isOpen) return null;
+
+            return (
+                <div className="cmd-overlay" onClick={onClose}>
+                    <div className="cmd-palette" onClick={e => e.stopPropagation()}>
+                        <div className="cmd-input-wrap">
+                            {Icons.search}
+                            <input
+                                ref={inputRef}
+                                className="cmd-input"
+                                placeholder="Type a command or search..."
+                                value={query}
+                                onChange={e => { setQuery(e.target.value); setSelectedIdx(0); }}
+                                onKeyDown={handleKeyDown}
+                            />
+                        </div>
+                        <div className="cmd-results">
+                            {filtered.length === 0 ? (
+                                <div className="cmd-empty">No results found</div>
+                            ) : filtered.map((item, idx) => (
+                                <div
+                                    key={item.key}
+                                    className={`cmd-item ${idx === selectedIdx ? 'active' : ''}`}
+                                    onClick={() => { onNavigate(item.key); onClose(); }}
+                                    onMouseEnter={() => setSelectedIdx(idx)}
+                                >
+                                    <span className="cmd-item-icon">{item.icon}</span>
+                                    <span className="cmd-item-label">{item.label}</span>
+                                    <span className="cmd-item-hint">Go to</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        /* ═══════════════════════════════════════════════════════
+           SKELETON LOADER
+           ═══════════════════════════════════════════════════════ */
+        const SkeletonLoader = ({ type = 'page' }) => {
+            if (type === 'stats') {
+                return (
+                    <div className="stats-grid">
+                        {[1,2,3,4].map(i => <div key={i} className="skeleton skeleton-card" style={{height: '100px'}}></div>)}
+                    </div>
+                );
+            }
+            return (
+                <div className="page-fade">
+                    <div className="skeleton skeleton-title"></div>
+                    <div className="skeleton skeleton-text" style={{width: '60%'}}></div>
+                    <div style={{marginTop: '1.5rem'}}>
+                        <div className="skeleton skeleton-card"></div>
+                        <div className="skeleton skeleton-card"></div>
+                    </div>
+                </div>
+            );
+        };
+
+        /* ═══════════════════════════════════════════════════════
+           AUTH & API
+           ═══════════════════════════════════════════════════════ */
+        let _bearerToken = null;
+        const _tokenReady = fetch('/auth/token')
+            .then(r => r.ok ? r.json() : Promise.reject('no token'))
+            .then(d => { _bearerToken = d.token; })
+            .catch(() => {});
+
+        let _currentUser = null;
+        const _authReady = fetch('/auth/me?context=admin', { credentials: 'include' })
+            .then(r => r.ok ? r.json() : Promise.reject('not authed'))
+            .then(user => {
+                _currentUser = user;
+                window.dispatchEvent(new CustomEvent('userLoaded', { detail: user }));
+                if (!user.is_admin) {
+                    window.location.href = '/login?error=' + encodeURIComponent('Admin access required.') + '&redirect=/';
+                }
+            })
+            .catch(() => {
+                return _tokenReady.then(() => {
+                    if (_bearerToken) {
+                        _currentUser = { email: 'admin', display_name: 'Admin', is_admin: true, provider: 'api_token' };
+                        window.dispatchEvent(new CustomEvent('userLoaded', { detail: _currentUser }));
+                    } else {
+                        window.location.href = '/login?redirect=/admin';
+                    }
+                });
+            });
+
+        window._setActiveSection = null;
+
+        const api = {
+            async _handleResponse(res) {
+                if (!res.ok) {
+                    let detail = `HTTP ${res.status}`;
+                    try { const body = await res.json(); detail = body.detail || detail; } catch {}
+                    throw new Error(detail);
+                }
+                return await res.json();
+            },
+            _authHeaders(extra = {}) {
+                const h = { ...extra };
+                if (_bearerToken) h['Authorization'] = `Bearer ${_bearerToken}`;
+                return h;
+            },
+            async get(endpoint) {
+                await _tokenReady;
+                const res = await fetch(endpoint, { headers: this._authHeaders(), credentials: 'include' });
+                if (res.status === 401) { window.location.href = '/login'; throw new Error('Not authenticated'); }
+                return this._handleResponse(res);
+            },
+            async put(endpoint, data) {
+                await _tokenReady;
+                const res = await fetch(endpoint, { method: 'PUT', headers: this._authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(data) });
+                return this._handleResponse(res);
+            },
+            async post(endpoint, data = {}) {
+                await _tokenReady;
+                const res = await fetch(endpoint, { method: 'POST', headers: this._authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(data) });
+                return this._handleResponse(res);
+            },
+            async del(endpoint) {
+                await _tokenReady;
+                const res = await fetch(endpoint, { method: 'DELETE', headers: this._authHeaders() });
+                return this._handleResponse(res);
+            }
+        };
+
+        /* ═══════════════════════════════════════════════════════
+           DASHBOARD
+           ═══════════════════════════════════════════════════════ */
+        const Dashboard = () => {
+            const [metrics, setMetrics] = useState(null);
+            const [health, setHealth] = useState(null);
+            const [stories, setStories] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [config, setConfig] = useState(null);
+            const refreshTimer = useRef(null);
+
+            const loadData = useCallback(async () => {
+                try {
+                    const [metricsData, healthData, storiesData, configData] = await Promise.all([
+                        api.get('/api/v1/metrics'),
+                        api.get('/health'),
+                        api.get('/api/v1/stories'),
+                        api.get('/api/v1/admin/config/llm/keys/summary').catch(() => null)
+                    ]);
+                    setMetrics(metricsData);
+                    setHealth(healthData);
+                    setStories(storiesData);
+                    setConfig(configData);
+                } catch (err) {
+                    window.showToast('Failed to load dashboard data', 'error');
+                } finally {
+                    setLoading(false);
+                }
+            }, []);
+
+            useEffect(() => {
+                loadData();
+                refreshTimer.current = setInterval(loadData, 30000);
+                return () => clearInterval(refreshTimer.current);
+            }, [loadData]);
+
+            if (loading) return <SkeletonLoader type="page" />;
+
+            const hasProviderKeys = config?.providers?.some(p => p.has_key);
+            const isHealthy = health?.status === 'healthy' || health?.status === 'ok';
+            const activeStories = stories.filter(s => s.state !== 'DONE' && s.state !== 'FAILED');
+            const doneStories = stories.filter(s => s.state === 'DONE');
+
+            return (
+                <div className="page-fade">
+                    {!hasProviderKeys && (
+                        <div className="setup-callout">
+                            <div className="setup-callout-icon">&#9889;</div>
+                            <div>
+                                <div className="setup-callout-title">Quick Setup Required</div>
+                                <div className="setup-callout-desc">No LLM providers configured yet. Add an API key to start processing stories.</div>
+                                <a href="#" onClick={e => { e.preventDefault(); if (window._setActiveSection) window._setActiveSection('llm'); }} className="setup-callout-action">
+                                    Configure providers {Icons.chevronRight}
+                                </a>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="stats-grid">
+                        <div className="stat-card">
+                            <div className="stat-icon accent">{Icons.activity}</div>
+                            <div className="stat-label">Active Stories</div>
+                            <div className="stat-value">{activeStories.length}</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-icon success">{Icons.check}</div>
+                            <div className="stat-label">Completed</div>
+                            <div className="stat-value">{doneStories.length}</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-icon info">{Icons.stories}</div>
+                            <div className="stat-label">Total Stories</div>
+                            <div className="stat-value">{stories.length}</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-label" style={{marginBottom: '0.5rem'}}>System Status</div>
+                            <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                                <span className={`badge-dot ${isHealthy ? 'green' : 'red'} pulse`}></span>
+                                <span style={{fontSize: '1.1rem', fontWeight: 600, color: isHealthy ? 'var(--success)' : 'var(--error)'}}>
+                                    {isHealthy ? 'Healthy' : 'Error'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {metrics && (
+                        <div className="stats-grid" style={{gridTemplateColumns: '1fr 1fr'}}>
+                            <div className="stat-card">
+                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem'}}>
+                                    <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                                        <span style={{color: 'var(--text-muted)'}}>{Icons.cpu}</span>
+                                        <span className="stat-label" style={{margin: 0}}>CPU Usage</span>
+                                    </div>
+                                    <span style={{fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)'}}>{(metrics.cpu_percent || 0).toFixed(1)}%</span>
+                                </div>
+                                <div className="progress-bar">
+                                    <div className="progress-fill" style={{width: `${Math.min(metrics.cpu_percent || 0, 100)}%`}}></div>
+                                </div>
+                            </div>
+                            <div className="stat-card">
+                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem'}}>
+                                    <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                                        <span style={{color: 'var(--text-muted)'}}>{Icons.memory}</span>
+                                        <span className="stat-label" style={{margin: 0}}>Memory Usage</span>
+                                    </div>
+                                    <span style={{fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)'}}>{(metrics.memory_percent || 0).toFixed(1)}%</span>
+                                </div>
+                                <div className="progress-bar">
+                                    <div className="progress-fill" style={{width: `${Math.min(metrics.memory_percent || 0, 100)}%`}}></div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', marginBottom: '1rem'}}>
+                        <h2 style={{fontSize: '1.1rem', fontWeight: 600}}>Recent Activity</h2>
+                        <button className="btn btn-ghost btn-sm" onClick={loadData} title="Refresh">{Icons.refresh} Refresh</button>
+                    </div>
+
+                    {stories.length === 0 ? (
+                        <div className="empty-state">
+                            <div className="empty-state-icon">{Icons.stories}</div>
+                            <div className="empty-state-title">No stories yet</div>
+                            <div className="empty-state-text">Submit your first story to get started with the autonomous dev agent.</div>
+                        </div>
+                    ) : (
+                        stories.slice(0, 5).map(story => {
+                            const stateColors = { 'RECEIVED': 'badge-blue', 'ANALYZING': 'badge-yellow', 'CODING': 'badge-purple', 'TESTING': 'badge-orange', 'DONE': 'badge-green', 'FAILED': 'badge-red' };
+                            return (
+                                <div key={story.id} className={`story-item state-${story.state.toLowerCase()}`}>
+                                    <div className="story-info">
+                                        <div className="story-id">Story #{story.id}</div>
+                                        <div className="story-desc">{story.description || 'No description'}</div>
+                                        <div className="story-meta">{new Date(story.created_at).toLocaleString()}</div>
+                                    </div>
+                                    <span className={`badge ${stateColors[story.state] || 'badge-blue'}`}>{story.state}</span>
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
+            );
+        };
+
+        /* ═══════════════════════════════════════════════════════
+           PROJECT SETTINGS
+           ═══════════════════════════════════════════════════════ */
+        const ProjectSettings = () => {
+            const [config, setConfig] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [saving, setSaving] = useState(false);
+
+            useEffect(() => {
+                api.get('/api/v1/admin/config/project').then(setConfig).catch(() => window.showToast('Failed to load project settings', 'error')).finally(() => setLoading(false));
+            }, []);
+
+            const handleChange = (field, value) => setConfig(prev => ({ ...prev, [field]: value }));
+
+            const handleSave = async () => {
+                try { setSaving(true); await api.put('/api/v1/admin/config/project', config); window.showToast('Settings saved', 'success'); }
+                catch (err) { window.showToast('Failed to save', 'error'); }
+                finally { setSaving(false); }
+            };
+
+            if (loading) return <SkeletonLoader />;
+            if (!config) return (<div className="page-fade"><div className="empty-state"><div className="empty-state-icon">{Icons.project}</div><div className="empty-state-title">Configuration unavailable</div><div className="empty-state-text">Could not load settings. Try refreshing the page.</div></div></div>);
+
+            return (
+                <div className="page-fade">
+                    <div className="page-header">
+                        <h1 className="page-title">Project Settings</h1>
+                        <p className="page-subtitle">Configure your project repository and environment</p>
+                    </div>
+
+                    <div className="card">
+                        <div className="form-group">
+                            <label className="form-label">Project Name</label>
+                            <input type="text" className="form-input" placeholder="My Project" value={config.name || ''} onChange={e => handleChange('name', e.target.value)} />
+                            <span className="form-helper">A descriptive name for your project</span>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Description</label>
+                            <textarea className="form-textarea" placeholder="A brief description..." value={config.description || ''} onChange={e => handleChange('description', e.target.value)} style={{fontFamily: 'inherit'}}></textarea>
+                        </div>
+
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label className="form-label">Repository URL</label>
+                                <input type="text" className="form-input" placeholder="https://github.com/org/repo" value={config.repo_url || ''} onChange={e => handleChange('repo_url', e.target.value)} />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Main Branch</label>
+                                <input type="text" className="form-input" placeholder="main" value={config.main_branch || 'main'} onChange={e => handleChange('main_branch', e.target.value)} />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Language</label>
+                                <select className="form-select" value={config.language || 'python'} onChange={e => handleChange('language', e.target.value)}>
+                                    <option value="python">Python</option>
+                                    <option value="javascript">JavaScript</option>
+                                    <option value="typescript">TypeScript</option>
+                                    <option value="go">Go</option>
+                                    <option value="rust">Rust</option>
+                                    <option value="java">Java</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="btn-group" style={{marginTop: '0.5rem'}}>
+                            <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save Settings'}</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        /* ═══════════════════════════════════════════════════════
+           LLM PROVIDERS
+           ═══════════════════════════════════════════════════════ */
+        const LLMProviders = () => {
+            const [summary, setSummary] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [expandedProvider, setExpandedProvider] = useState(null);
+            const [collapsedKeys, setCollapsedKeys] = useState({});
+            const [keyInputs, setKeyInputs] = useState({});
+            const [showKey, setShowKey] = useState({});
+            const [validating, setValidating] = useState({});
+            const [validationResults, setValidationResults] = useState({});
+            const [savingKey, setSavingKey] = useState({});
+            const [defaultProvider, setDefaultProvider] = useState(null);
+            const [defaultModel, setDefaultModel] = useState(null);
+            const [defaultTier, setDefaultTier] = useState('mid');
+            const [savingDefault, setSavingDefault] = useState(false);
+            const [confirmClear, setConfirmClear] = useState(null);
+
+            const providerLabels = { anthropic: 'Anthropic (Claude)', openai: 'OpenAI (GPT)', google: 'Google (Gemini)', ollama: 'Ollama (Local)' };
+            const keyPlaceholders = { anthropic: 'sk-ant-api03-...', openai: 'sk-proj-...', google: 'AIza...', ollama: 'Not required' };
+            const providerColors = { anthropic: '#c084fc', openai: '#34d399', google: '#60a5fa', ollama: '#fb923c' };
+
+            useEffect(() => { loadSummary(); }, []);
+
+            const loadSummary = async () => {
+                try {
+                    setLoading(true);
+                    const data = await api.get('/api/v1/admin/config/llm/keys/summary');
+                    setSummary(data);
+                    setDefaultProvider(data.default_provider);
+                    setDefaultModel(data.default_model);
+                    setDefaultTier(data.default_tier || 'mid');
+                } catch { window.showToast('Failed to load LLM config', 'error'); }
+                finally { setLoading(false); }
+            };
+
+            const handleSetKey = async (name) => {
+                const key = (keyInputs[name] || '').trim();
+                if (!key) { window.showToast('Please enter an API key', 'error'); return; }
+                try {
+                    setSavingKey(p => ({...p, [name]: true}));
+                    await api.put(`/api/v1/admin/config/llm/providers/${name}/key`, { api_key: key });
+                    window.showToast(`${providerLabels[name] || name} key saved`, 'success');
+                    setKeyInputs(p => ({...p, [name]: ''}));
+                    setShowKey(p => ({...p, [name]: false}));
+                    setValidationResults(p => ({...p, [name]: null}));
+                    setCollapsedKeys(p => ({...p, [name]: true}));
+                    await loadSummary();
+                } catch (err) { window.showToast(err?.message || 'Failed to set key', 'error'); }
+                finally { setSavingKey(p => ({...p, [name]: false})); }
+            };
+
+            const handleClearKey = async (name) => {
+                try {
+                    await api.del(`/api/v1/admin/config/llm/providers/${name}/key`);
+                    window.showToast(`${providerLabels[name] || name} key removed`, 'success');
+                    setConfirmClear(null);
+                    setValidationResults(p => ({...p, [name]: null}));
+                    setCollapsedKeys(p => ({...p, [name]: false}));
+                    await loadSummary();
+                } catch { window.showToast('Failed to clear key', 'error'); }
+            };
+
+            const handleValidateKey = async (name) => {
+                try {
+                    setValidating(p => ({...p, [name]: true}));
+                    const resp = await api.post(`/api/v1/admin/config/llm/providers/${name}/key/validate`, {});
+                    setValidationResults(p => ({...p, [name]: resp}));
+                    window.showToast(resp.valid ? 'Key is valid!' : `Validation failed: ${resp.error}`, resp.valid ? 'success' : 'error');
+                } catch { window.showToast('Validation request failed', 'error'); }
+                finally { setValidating(p => ({...p, [name]: false})); }
+            };
+
+            const handleToggleProvider = async (name) => {
+                try { await api.put(`/api/v1/admin/config/llm/providers/${name}/toggle`, {}); await loadSummary(); window.showToast(`${name} toggled`, 'success'); }
+                catch (err) { window.showToast(err?.message || 'Toggle failed', 'error'); }
+            };
+
+            const handleSaveDefault = async () => {
+                try {
+                    setSavingDefault(true);
+                    await api.put('/api/v1/admin/config/llm/default', { provider: defaultProvider, model: defaultModel, tier: defaultTier });
+                    window.showToast('Default LLM saved', 'success');
+                    await loadSummary();
+                } catch (err) { window.showToast(err?.message || 'Failed', 'error'); }
+                finally { setSavingDefault(false); }
+            };
+
+            const getModelsForProvider = (name) => {
+                if (!summary) return [];
+                const p = summary.providers.find(p => p.name === name);
+                return p ? p.models : [];
+            };
+
+            if (loading) return <SkeletonLoader />;
+            if (!summary) return (<div className="page-fade"><div className="empty-state"><div className="empty-state-icon">{Icons.llm}</div><div className="empty-state-title">Failed to load LLM configuration</div></div></div>);
+
+            const noKeysSet = summary.providers.every(p => !p.has_key);
+
+            return (
+                <div className="page-fade">
+                    <div className="page-header">
+                        <h1 className="page-title">LLM Providers</h1>
+                        <p className="page-subtitle">Manage API keys and configure your default language model</p>
+                    </div>
+
+                    {noKeysSet && (
+                        <div className="callout">
+                            <div className="callout-title">Getting Started</div>
+                            <div className="callout-text">Add an API key below to start using the agent. We recommend Anthropic or OpenAI.</div>
+                        </div>
+                    )}
+
+                    {/* Default LLM */}
+                    <div className="card" style={{border: '1px solid var(--border-accent)', background: 'linear-gradient(135deg, rgba(99,102,241,0.06), rgba(52,211,153,0.03))'}}>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem'}}>
+                            <span style={{color: 'var(--accent-light)'}}>{Icons.star}</span>
+                            <div>
+                                <div style={{fontSize: '0.95rem', fontWeight: 600}}>Default LLM</div>
+                                <div style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>Primary model for all tasks unless overridden by routing rules</div>
+                            </div>
+                        </div>
+                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '1rem'}}>
+                            <div className="form-group" style={{margin: 0}}>
+                                <label className="form-label">Provider</label>
+                                <select className="form-select" value={defaultProvider || ''} onChange={e => { setDefaultProvider(e.target.value || null); setDefaultModel(null); }}>
+                                    <option value="">Select...</option>
+                                    {summary.providers.map(p => <option key={p.name} value={p.name}>{providerLabels[p.name] || p.name}</option>)}
+                                </select>
+                            </div>
+                            <div className="form-group" style={{margin: 0}}>
+                                <label className="form-label">Model</label>
+                                <select className="form-select" value={defaultModel || ''} onChange={e => setDefaultModel(e.target.value || null)} disabled={!defaultProvider}>
+                                    <option value="">Select...</option>
+                                    {getModelsForProvider(defaultProvider).map(m => { const id = typeof m === 'string' ? m : m.id; return <option key={id} value={id}>{id}</option>; })}
+                                </select>
+                            </div>
+                            <div className="form-group" style={{margin: 0}}>
+                                <label className="form-label">Tier</label>
+                                <select className="form-select" value={defaultTier} onChange={e => setDefaultTier(e.target.value)}>
+                                    <option value="fast">Fast (Low Cost)</option>
+                                    <option value="mid">Balanced</option>
+                                    <option value="quality">Quality (High Cost)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button className="btn btn-primary" onClick={handleSaveDefault} disabled={savingDefault}>{savingDefault ? 'Saving...' : 'Save Default'}</button>
+                    </div>
+
+                    {/* Provider Cards */}
+                    <h2 style={{fontSize: '1rem', fontWeight: 600, margin: '1.5rem 0 0.75rem', color: 'var(--text-secondary)'}}>Configure Providers</h2>
+
+                    {summary.providers.map(provider => {
+                        const isKeyCollapsed = collapsedKeys[provider.name] !== false && provider.has_key;
+                        const accentColor = providerColors[provider.name] || 'var(--accent)';
+                        return (
+                            <div key={provider.name} className="provider-card" style={{borderLeft: `3px solid ${accentColor}`}}>
+                                <div className="provider-card-header" style={{marginBottom: '0.75rem'}}>
+                                    <div>
+                                        <div className="provider-name">{providerLabels[provider.name] || provider.name}</div>
+                                        <div className="provider-meta">
+                                            {provider.models?.length > 0 ? `${provider.models.length} models` : 'No models'}
+                                            {provider.has_key && ' \u00b7 Key configured'}
+                                        </div>
+                                    </div>
+                                    <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
+                                        <span className={`provider-status ${provider.enabled ? 'enabled' : 'disabled'}`}>
+                                            <span className={`badge-dot ${provider.enabled ? 'green' : 'red'}`}></span>
+                                            {provider.enabled ? 'Active' : 'Inactive'}
+                                        </span>
+                                        <div className={`toggle-switch ${provider.enabled ? 'active' : ''}`} onClick={() => handleToggleProvider(provider.name)} style={{cursor: 'pointer'}}></div>
+                                    </div>
+                                </div>
+
+                                {isKeyCollapsed ? (
+                                    <div className="expandable-header" onClick={() => setCollapsedKeys(p => ({...p, [provider.name]: false}))}>
+                                        <span style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                                            <span style={{color: 'var(--success)'}}>{Icons.check}</span> API Key Configured
+                                        </span>
+                                        <span>{Icons.chevronDown}</span>
+                                    </div>
+                                ) : (
+                                    <div>
+                                        {provider.type === 'ollama' ? (
+                                            <div style={{padding: '0.85rem 1rem', background: 'var(--success-bg)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(52,211,153,0.15)'}}>
+                                                <div style={{fontWeight: 600, color: 'var(--success)', marginBottom: '0.15rem', fontSize: '0.85rem'}}>No API key required</div>
+                                                <div style={{fontSize: '0.78rem', color: 'var(--text-secondary)'}}>
+                                                    Ollama runs locally. Ensure the service is running at <code style={{background: 'var(--bg-overlay)', padding: '0.1rem 0.3rem', borderRadius: '3px', fontSize: '0.75rem'}}>http://localhost:11434</code>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className="form-group" style={{marginBottom: '0.75rem'}}>
+                                                    <label className="form-label">API Key</label>
+                                                    <div style={{position: 'relative'}}>
+                                                        <input
+                                                            type={showKey[provider.name] ? 'text' : 'password'}
+                                                            className="form-input"
+                                                            placeholder={keyPlaceholders[provider.name] || 'Enter API key...'}
+                                                            value={keyInputs[provider.name] || ''}
+                                                            onChange={e => setKeyInputs(p => ({...p, [provider.name]: e.target.value}))}
+                                                            style={{paddingRight: '4rem'}}
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowKey(p => ({...p, [provider.name]: !p[provider.name]}))}
+                                                            style={{position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: '0.72rem', fontFamily: 'inherit', fontWeight: 500}}
+                                                        >
+                                                            {showKey[provider.name] ? 'Hide' : 'Show'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div className="btn-group" style={{marginBottom: validationResults[provider.name] ? '0.75rem' : 0}}>
+                                                    <button className="btn btn-primary btn-sm" onClick={() => handleSetKey(provider.name)} disabled={savingKey[provider.name]}>
+                                                        {savingKey[provider.name] ? 'Saving...' : 'Save Key'}
+                                                    </button>
+                                                    {provider.has_key && (
+                                                        <>
+                                                            <button className="btn btn-secondary btn-sm" onClick={() => handleValidateKey(provider.name)} disabled={validating[provider.name]}>
+                                                                {validating[provider.name] ? 'Testing...' : 'Test Key'}
+                                                            </button>
+                                                            <button className="btn btn-danger btn-sm" onClick={() => setConfirmClear(provider.name)}>Clear</button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                                {validationResults[provider.name] && (
+                                                    <div style={{padding: '0.6rem 0.85rem', background: validationResults[provider.name].valid ? 'var(--success-bg)' : 'var(--error-bg)', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem', color: validationResults[provider.name].valid ? 'var(--success)' : 'var(--error)', display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
+                                                        {validationResults[provider.name].valid ? Icons.check : Icons.x}
+                                                        {validationResults[provider.name].valid ? 'Key is valid!' : `Error: ${validationResults[provider.name].error}`}
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+
+                                        {provider.models?.length > 0 && (
+                                            <>
+                                                <div className="expandable-header" onClick={() => setExpandedProvider(expandedProvider === provider.name ? null : provider.name)} style={{marginTop: '0.75rem'}}>
+                                                    <span>Available Models ({provider.models.length})</span>
+                                                    <span>{expandedProvider === provider.name ? Icons.chevronDown : Icons.chevronRight}</span>
+                                                </div>
+                                                {expandedProvider === provider.name && (
+                                                    <div className="expandable-content">
+                                                        {provider.models.map(m => {
+                                                            const modelId = typeof m === 'string' ? m : m.id;
+                                                            return (
+                                                                <div key={modelId} style={{padding: '0.4rem 0', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border)', fontSize: '0.8rem', fontFamily: 'monospace'}}>
+                                                                    {modelId}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+
+                    <ConfirmModal isOpen={!!confirmClear} title="Clear API Key" message={`Remove the API key for ${confirmClear}? This cannot be undone.`} onConfirm={() => handleClearKey(confirmClear)} onCancel={() => setConfirmClear(null)} />
+                </div>
+            );
+        };
+
+        /* ═══════════════════════════════════════════════════════
+           MODEL ROUTING
+           ═══════════════════════════════════════════════════════ */
+        const ModelRouting = () => {
+            const [config, setConfig] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [saving, setSaving] = useState(false);
+            const [jsonError, setJsonError] = useState(null);
+            const [fallbackText, setFallbackText] = useState('[]');
+
+            useEffect(() => {
+                api.get('/api/v1/admin/config/llm')
+                    .then(data => {
+                        const routing = data.routing || {};
+                        setConfig(routing);
+                        setFallbackText(JSON.stringify(routing.fallback_chain || [], null, 2));
+                    })
+                    .catch(() => window.showToast('Failed to load routing', 'error'))
+                    .finally(() => setLoading(false));
+            }, []);
+
+            const handleFallbackChange = (value) => {
+                setFallbackText(value);
+                setJsonError(null);
+                try { JSON.parse(value); }
+                catch (e) { setJsonError(e.message); }
+            };
+
+            const handleTaskOverrideChange = (field, value) => {
+                setConfig(prev => ({ ...prev, task_overrides: { ...prev.task_overrides, [field]: value } }));
+            };
+
+            const handleSave = async () => {
+                try {
+                    setSaving(true);
+                    const fallback = JSON.parse(fallbackText);
+                    await api.put('/api/v1/admin/config/llm/routing', {
+                        fallback_chain: fallback,
+                        task_overrides: config.task_overrides || {}
+                    });
+                    window.showToast('Routing saved', 'success');
+                } catch (err) { window.showToast(err?.message || 'Failed', 'error'); }
+                finally { setSaving(false); }
+            };
+
+            if (loading) return <SkeletonLoader />;
+            if (!config) return (<div className="page-fade"><div className="empty-state"><div className="empty-state-icon">{Icons.routing}</div><div className="empty-state-title">Configuration unavailable</div><div className="empty-state-text">Could not load routing settings. Try refreshing.</div></div></div>);
+
+            return (
+                <div className="page-fade">
+                    <div className="page-header">
+                        <h1 className="page-title">Model Routing</h1>
+                        <p className="page-subtitle">Define fallback chains for model selection</p>
+                    </div>
+                    <div className="card">
+                        <div className="callout">
+                            <div className="callout-title">Fallback Chain</div>
+                            <div className="callout-text">The agent tries each provider in sequence until one succeeds.</div>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Fallback Chain (JSON)</label>
+                            <textarea className="form-textarea" value={fallbackText} onChange={e => handleFallbackChange(e.target.value)} placeholder='["anthropic", "openai"]'></textarea>
+                            {jsonError ? <div className="form-error">Invalid JSON: {jsonError}</div> : <span className="form-helper">JSON array of provider names in priority order</span>}
+                        </div>
+                        <button className="btn btn-primary" onClick={handleSave} disabled={saving || !!jsonError}>{saving ? 'Saving...' : 'Save Routing'}</button>
+                    </div>
+                </div>
+            );
+        };
+
+        /* ═══════════════════════════════════════════════════════
+           COST & BUDGETS
+           ═══════════════════════════════════════════════════════ */
+        const CostBudgets = () => {
+            const [config, setConfig] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [saving, setSaving] = useState(false);
+
+            useEffect(() => {
+                api.get('/api/v1/admin/config/llm')
+                    .then(data => setConfig(data.cost || {}))
+                    .catch(() => window.showToast('Failed to load cost config', 'error'))
+                    .finally(() => setLoading(false));
+            }, []);
+
+            const handleChange = (field, value) => setConfig(prev => ({ ...prev, [field]: value === '' ? '' : isNaN(parseFloat(value)) ? value : parseFloat(value) }));
+
+            const handleSave = async () => {
+                try { setSaving(true); await api.put('/api/v1/admin/config/llm/cost', config); window.showToast('Cost settings saved', 'success'); }
+                catch (err) { window.showToast(err?.message || 'Failed to save', 'error'); }
+                finally { setSaving(false); }
+            };
+
+            if (loading) return <SkeletonLoader />;
+            if (!config) return (<div className="page-fade"><div className="empty-state"><div className="empty-state-icon">{Icons.cost}</div><div className="empty-state-title">Configuration unavailable</div><div className="empty-state-text">Could not load cost settings. Try refreshing.</div></div></div>);
+
+            /* CostConfig fields: monthly_budget_usd, daily_budget_usd, max_cost_per_story_usd, warning_threshold, escalation_action */
+            const budget = config.monthly_budget_usd || 2000;
+            const daily = config.daily_budget_usd || 100;
+            const perStory = config.max_cost_per_story_usd || 5;
+            const warnPct = (config.warning_threshold || 0.8) * 100;
+
+            return (
+                <div className="page-fade">
+                    <div className="page-header">
+                        <h1 className="page-title">Cost & Budgets</h1>
+                        <p className="page-subtitle">Track and manage API usage costs</p>
+                    </div>
+
+                    <div className="stats-grid" style={{gridTemplateColumns: '1fr 1fr 1fr'}}>
+                        <div className="stat-card">
+                            <div className="stat-label">Monthly Budget</div>
+                            <div className="stat-value">${budget.toFixed(2)}</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-label">Daily Budget</div>
+                            <div className="stat-value">${daily.toFixed(2)}</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-label">Per-Story Limit</div>
+                            <div className="stat-value">${perStory.toFixed(2)}</div>
+                        </div>
+                    </div>
+
+                    <div className="card">
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label className="form-label">Monthly Budget (USD)</label>
+                                <input type="number" className="form-input" value={config.monthly_budget_usd ?? ''} onChange={e => handleChange('monthly_budget_usd', e.target.value)} placeholder="2000" step="100" />
+                                <span className="form-helper">Maximum monthly spending across all providers</span>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Daily Budget (USD)</label>
+                                <input type="number" className="form-input" value={config.daily_budget_usd ?? ''} onChange={e => handleChange('daily_budget_usd', e.target.value)} placeholder="100" step="10" />
+                                <span className="form-helper">Maximum spend per day</span>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Per-Story Limit (USD)</label>
+                                <input type="number" className="form-input" value={config.max_cost_per_story_usd ?? ''} onChange={e => handleChange('max_cost_per_story_usd', e.target.value)} placeholder="5" step="1" />
+                                <span className="form-helper">Maximum cost allowed per story</span>
+                            </div>
+                        </div>
+
+                        <div className="form-row" style={{marginTop: '0.25rem'}}>
+                            <div className="form-group">
+                                <label className="form-label">Warning Threshold</label>
+                                <div className="slider-container">
+                                    <input type="range" className="slider" min="0" max="100" step="5" value={warnPct} onChange={e => handleChange('warning_threshold', parseFloat(e.target.value) / 100)} />
+                                    <div className="slider-value">{Math.round(warnPct)}%</div>
+                                </div>
+                                <span className="form-helper">Alert when budget usage exceeds this percentage</span>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Escalation Action</label>
+                                <select className="form-select" value={config.escalation_action || 'pause'} onChange={e => handleChange('escalation_action', e.target.value)}>
+                                    <option value="pause">Pause (stop processing)</option>
+                                    <option value="downgrade_model">Downgrade model (use cheaper)</option>
+                                    <option value="notify_and_continue">Notify and continue</option>
+                                </select>
+                                <span className="form-helper">What to do when budget is exceeded</span>
+                            </div>
+                        </div>
+
+                        <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{marginTop: '0.5rem'}}>{saving ? 'Saving...' : 'Save Budget Settings'}</button>
+                    </div>
+                </div>
+            );
+        };
+
+        /* ═══════════════════════════════════════════════════════
+           SAFETY & APPROVALS
+           ═══════════════════════════════════════════════════════ */
+        const SafetyApprovals = () => {
+            const [config, setConfig] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [saving, setSaving] = useState(false);
+
+            useEffect(() => {
+                api.get('/api/v1/admin/config/safety').then(setConfig).catch(() => window.showToast('Failed to load safety config', 'error')).finally(() => setLoading(false));
+            }, []);
+
+            const handleToggle = (field) => setConfig(prev => ({ ...prev, [field]: !prev[field] }));
+
+            const handleSave = async () => {
+                try { setSaving(true); await api.put('/api/v1/admin/config/safety', config); window.showToast('Safety settings saved', 'success'); }
+                catch { window.showToast('Failed to save', 'error'); }
+                finally { setSaving(false); }
+            };
+
+            if (loading) return <SkeletonLoader />;
+            if (!config) return (<div className="page-fade"><div className="empty-state"><div className="empty-state-icon">{Icons.safety}</div><div className="empty-state-title">Configuration unavailable</div><div className="empty-state-text">Could not load safety settings.</div></div></div>);
+
+            return (
+                <div className="page-fade">
+                    <div className="page-header">
+                        <h1 className="page-title">Safety & Approvals</h1>
+                        <p className="page-subtitle">Configure safety checks and approval workflows</p>
+                    </div>
+                    <div className="settings-group">
+                        <div className="settings-group-title">Code Review</div>
+                        <div className="settings-item">
+                            <div className="settings-item-content">
+                                <div className="settings-item-label">Require Manual Review</div>
+                                <div className="settings-item-description">All code changes must be manually approved before applying</div>
+                            </div>
+                            <div className={`toggle-switch ${config.require_manual_review ? 'active' : ''}`} onClick={() => handleToggle('require_manual_review')} style={{cursor: 'pointer'}}></div>
+                        </div>
+                    </div>
+                    <div className="settings-group">
+                        <div className="settings-group-title">Security</div>
+                        <div className="settings-item">
+                            <div className="settings-item-content">
+                                <div className="settings-item-label">Block Dangerous Patterns</div>
+                                <div className="settings-item-description">Auto-block code with hardcoded credentials or dangerous patterns</div>
+                            </div>
+                            <div className={`toggle-switch ${config.block_dangerous_patterns ? 'active' : ''}`} onClick={() => handleToggle('block_dangerous_patterns')} style={{cursor: 'pointer'}}></div>
+                        </div>
+                        <div className="settings-item">
+                            <div className="settings-item-content">
+                                <div className="settings-item-label">Scan Dependencies</div>
+                                <div className="settings-item-description">Check dependencies for known security vulnerabilities</div>
+                            </div>
+                            <div className={`toggle-switch ${config.scan_dependencies ? 'active' : ''}`} onClick={() => handleToggle('scan_dependencies')} style={{cursor: 'pointer'}}></div>
+                        </div>
+                    </div>
+                    <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save Safety Settings'}</button>
+                </div>
+            );
+        };
+
+        /* ═══════════════════════════════════════════════════════
+           QUALITY GATES
+           ═══════════════════════════════════════════════════════ */
+        const QualityGates = () => {
+            const [config, setConfig] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [saving, setSaving] = useState(false);
+
+            useEffect(() => {
+                api.get('/api/v1/admin/config/quality').then(setConfig).catch(() => window.showToast('Failed to load quality config', 'error')).finally(() => setLoading(false));
+            }, []);
+
+            const handleChange = (field, value) => setConfig(prev => ({ ...prev, [field]: isNaN(value) ? value : parseFloat(value) }));
+
+            const handleSave = async () => {
+                try { setSaving(true); await api.put('/api/v1/admin/config/quality', config); window.showToast('Quality settings saved', 'success'); }
+                catch { window.showToast('Failed to save', 'error'); }
+                finally { setSaving(false); }
+            };
+
+            if (loading) return <SkeletonLoader />;
+            if (!config) return (<div className="page-fade"><div className="empty-state"><div className="empty-state-icon">{Icons.quality}</div><div className="empty-state-title">Configuration unavailable</div><div className="empty-state-text">Could not load quality settings.</div></div></div>);
+
+            const coverage = config.min_test_coverage || 80;
+            let coverageColor = 'coverage-low';
+            if (coverage >= 80) coverageColor = 'coverage-high';
+            else if (coverage >= 50) coverageColor = 'coverage-medium';
+
+            return (
+                <div className="page-fade">
+                    <div className="page-header">
+                        <h1 className="page-title">Quality Gates</h1>
+                        <p className="page-subtitle">Set quality requirements for generated code</p>
+                    </div>
+                    <div className="card">
+                        <div className="form-group">
+                            <label className="form-label">Minimum Test Coverage</label>
+                            <div className="slider-container">
+                                <input type="range" className="slider" min="0" max="100" value={coverage} onChange={e => handleChange('min_test_coverage', e.target.value)} />
+                                <div className={`slider-value ${coverageColor}`}>{Math.round(coverage)}%</div>
+                            </div>
+                            <span className="form-helper">{coverage < 50 ? 'Low \u2014 Relaxed testing' : coverage < 80 ? 'Medium \u2014 Standard testing' : 'High \u2014 Strict testing'}</span>
+                        </div>
+
+                        <div className="settings-group" style={{marginTop: '0.5rem'}}>
+                            <div className="settings-group-title">Additional Checks</div>
+                            <div className="settings-item">
+                                <div className="settings-item-content">
+                                    <div className="settings-item-label">Lint Checks</div>
+                                    <div className="settings-item-description">All code must pass linting before acceptance</div>
+                                </div>
+                                <div className={`toggle-switch ${config.require_lint ? 'active' : ''}`} onClick={() => handleChange('require_lint', !config.require_lint)} style={{cursor: 'pointer'}}></div>
+                            </div>
+                            <div className="settings-item">
+                                <div className="settings-item-content">
+                                    <div className="settings-item-label">Type Checking</div>
+                                    <div className="settings-item-description">Perform type checking on all generated code</div>
+                                </div>
+                                <div className={`toggle-switch ${config.require_type_checks ? 'active' : ''}`} onClick={() => handleChange('require_type_checks', !config.require_type_checks)} style={{cursor: 'pointer'}}></div>
+                            </div>
+                        </div>
+
+                        <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{marginTop: '0.5rem'}}>{saving ? 'Saving...' : 'Save Quality Settings'}</button>
+                    </div>
+                </div>
+            );
+        };
+
+        /* ═══════════════════════════════════════════════════════
+           OBSERVABILITY
+           ═══════════════════════════════════════════════════════ */
+        const Observability = () => {
+            const [config, setConfig] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [saving, setSaving] = useState(false);
+
+            useEffect(() => {
+                api.get('/api/v1/admin/config/observability').then(setConfig).catch(() => window.showToast('Failed to load observability config', 'error')).finally(() => setLoading(false));
+            }, []);
+
+            const handleToggle = (field) => setConfig(prev => ({ ...prev, [field]: !prev[field] }));
+
+            const handleSave = async () => {
+                try { setSaving(true); await api.put('/api/v1/admin/config/observability', config); window.showToast('Observability settings saved', 'success'); }
+                catch { window.showToast('Failed to save', 'error'); }
+                finally { setSaving(false); }
+            };
+
+            if (loading) return <SkeletonLoader />;
+            if (!config) return (<div className="page-fade"><div className="empty-state"><div className="empty-state-icon">{Icons.observability}</div><div className="empty-state-title">Configuration unavailable</div><div className="empty-state-text">Could not load observability settings.</div></div></div>);
+
+            return (
+                <div className="page-fade">
+                    <div className="page-header">
+                        <h1 className="page-title">Observability</h1>
+                        <p className="page-subtitle">Configure logging, monitoring, and audit trails</p>
+                    </div>
+                    <div className="settings-group">
+                        <div className="settings-group-title">Logging</div>
+                        <div className="settings-item">
+                            <div className="settings-item-content">
+                                <div className="settings-item-label">Debug Logging</div>
+                                <div className="settings-item-description">Log detailed operation information for troubleshooting</div>
+                            </div>
+                            <div className={`toggle-switch ${config.debug_logging ? 'active' : ''}`} onClick={() => handleToggle('debug_logging')} style={{cursor: 'pointer'}}></div>
+                        </div>
+                        <div className="settings-item">
+                            <div className="settings-item-content">
+                                <div className="settings-item-label">API Request Logging</div>
+                                <div className="settings-item-description">Record all API requests and responses for analysis</div>
+                            </div>
+                            <div className={`toggle-switch ${config.log_api_requests ? 'active' : ''}`} onClick={() => handleToggle('log_api_requests')} style={{cursor: 'pointer'}}></div>
+                        </div>
+                    </div>
+                    <div className="settings-group">
+                        <div className="settings-group-title">Monitoring</div>
+                        <div className="settings-item">
+                            <div className="settings-item-content">
+                                <div className="settings-item-label">Metrics Collection</div>
+                                <div className="settings-item-description">Track performance metrics and resource usage</div>
+                            </div>
+                            <div className={`toggle-switch ${config.enable_metrics ? 'active' : ''}`} onClick={() => handleToggle('enable_metrics')} style={{cursor: 'pointer'}}></div>
+                        </div>
+                    </div>
+                    <div className="settings-group">
+                        <div className="settings-group-title">Audit</div>
+                        <div className="settings-item">
+                            <div className="settings-item-content">
+                                <div className="settings-item-label">Audit Trail</div>
+                                <div className="settings-item-description">Maintain comprehensive logs of all admin actions</div>
+                            </div>
+                            <div className={`toggle-switch ${config.enable_audit_trail ? 'active' : ''}`} onClick={() => handleToggle('enable_audit_trail')} style={{cursor: 'pointer'}}></div>
+                        </div>
+                    </div>
+                    <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save Settings'}</button>
+                </div>
+            );
+        };
+
+        /* ═══════════════════════════════════════════════════════
+           STORIES
+           ═══════════════════════════════════════════════════════ */
+        const Stories = () => {
+            const [stories, setStories] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [filter, setFilter] = useState('all');
+
+            useEffect(() => {
+                api.get('/api/v1/stories').then(setStories).catch(() => window.showToast('Failed to load stories', 'error')).finally(() => setLoading(false));
+            }, []);
+
+            if (loading) return <SkeletonLoader />;
+
+            const stateColors = { 'RECEIVED': 'badge-blue', 'ANALYZING': 'badge-yellow', 'CODING': 'badge-purple', 'TESTING': 'badge-orange', 'DONE': 'badge-green', 'FAILED': 'badge-red' };
+
+            let filtered = stories;
+            if (filter === 'active') filtered = stories.filter(s => s.state !== 'DONE' && s.state !== 'FAILED');
+            else if (filter === 'done') filtered = stories.filter(s => s.state === 'DONE');
+            else if (filter === 'failed') filtered = stories.filter(s => s.state === 'FAILED');
+
+            const filterOpts = [
+                { key: 'all', label: 'All', count: stories.length },
+                { key: 'active', label: 'Active', count: stories.filter(s => s.state !== 'DONE' && s.state !== 'FAILED').length },
+                { key: 'done', label: 'Done', count: stories.filter(s => s.state === 'DONE').length },
+                { key: 'failed', label: 'Failed', count: stories.filter(s => s.state === 'FAILED').length }
+            ];
+
+            return (
+                <div className="page-fade">
+                    <div className="page-header">
+                        <h1 className="page-title">Stories</h1>
+                        <p className="page-subtitle">View and manage all development stories</p>
+                    </div>
+
+                    <div className="filter-tabs">
+                        {filterOpts.map(opt => (
+                            <button key={opt.key} className={`filter-tab ${filter === opt.key ? 'active' : ''}`} onClick={() => setFilter(opt.key)}>
+                                {opt.label} ({opt.count})
+                            </button>
+                        ))}
+                    </div>
+
+                    {filtered.length === 0 ? (
+                        <div className="empty-state">
+                            <div className="empty-state-icon">{Icons.stories}</div>
+                            <div className="empty-state-title">No stories found</div>
+                            <div className="empty-state-text">{filter === 'all' ? 'No stories have been submitted yet.' : 'No stories match this filter.'}</div>
+                        </div>
+                    ) : filtered.map(story => (
+                        <div key={story.id} className={`story-item state-${story.state.toLowerCase()}`}>
+                            <div className="story-info">
+                                <div className="story-id">Story #{story.id}</div>
+                                <div className="story-desc">{story.description || 'No description'}</div>
+                                <div className="story-meta">
+                                    {new Date(story.created_at).toLocaleString()}
+                                    {story.updated_at && ` \u00b7 Updated ${new Date(story.updated_at).toLocaleString()}`}
+                                </div>
+                            </div>
+                            <span className={`badge ${stateColors[story.state] || 'badge-blue'}`}>{story.state}</span>
+                        </div>
+                    ))}
+                </div>
+            );
+        };
+
+        /* ═══════════════════════════════════════════════════════
+           AUTHENTICATION
+           ═══════════════════════════════════════════════════════ */
+        const Authentication = () => {
+            const [users, setUsers] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [showCreate, setShowCreate] = useState(false);
+            const [creating, setCreating] = useState(false);
+            const [newUser, setNewUser] = useState({ email: '', password: '', display_name: '', role: 'admin' });
+            const [actionLoading, setActionLoading] = useState(null);
+
+            const loadUsers = () => {
+                api.get('/auth/admin/auth/users')
+                    .then(data => setUsers(data.users || []))
+                    .catch(() => window.showToast('Failed to load users', 'error'))
+                    .finally(() => setLoading(false));
+            };
+
+            useEffect(() => { loadUsers(); }, []);
+
+            const handleCreate = async () => {
+                if (!newUser.email || !newUser.password || newUser.password.length < 8) {
+                    window.showToast('Email and password (min 8 chars) are required', 'error');
+                    return;
+                }
+                setCreating(true);
+                try {
+                    await api.post('/auth/admin/auth/users', newUser);
+                    window.showToast('User created successfully', 'success');
+                    setShowCreate(false);
+                    setNewUser({ email: '', password: '', display_name: '', role: 'admin' });
+                    setLoading(true);
+                    loadUsers();
+                } catch (e) {
+                    window.showToast(e.message || 'Failed to create user', 'error');
+                } finally {
+                    setCreating(false);
+                }
+            };
+
+            const toggleActive = async (user) => {
+                setActionLoading(user.id);
+                try {
+                    await api.put(`/auth/admin/auth/users/${user.id}/active`, { active: !user.active });
+                    window.showToast(`User ${user.active ? 'deactivated' : 'activated'}`, 'success');
+                    setLoading(true);
+                    loadUsers();
+                } catch (e) {
+                    window.showToast(e.message || 'Failed to update user', 'error');
+                } finally {
+                    setActionLoading(null);
+                }
+            };
+
+            const changeRole = async (user, newRole) => {
+                setActionLoading(user.id);
+                try {
+                    await api.put(`/auth/admin/auth/users/${user.id}/role`, { role: newRole });
+                    window.showToast(`Role updated to ${newRole}`, 'success');
+                    setLoading(true);
+                    loadUsers();
+                } catch (e) {
+                    window.showToast(e.message || 'Failed to update role', 'error');
+                } finally {
+                    setActionLoading(null);
+                }
+            };
+
+            const deleteUser = async (user) => {
+                if (!confirm(`Delete user ${user.email}? This cannot be undone.`)) return;
+                setActionLoading(user.id);
+                try {
+                    await api.del(`/auth/admin/auth/users/${user.id}`);
+                    window.showToast('User deleted', 'success');
+                    setLoading(true);
+                    loadUsers();
+                } catch (e) {
+                    window.showToast(e.message || 'Failed to delete user', 'error');
+                } finally {
+                    setActionLoading(null);
+                }
+            };
+
+            const roleBadge = (roles) => {
+                const primary = (roles && roles[0]) || 'user';
+                const colors = { admin: 'badge-purple', user: 'badge-blue', viewer: 'badge-gray' };
+                return <span className={`badge ${colors[primary] || 'badge-blue'}`}>{primary}</span>;
+            };
+
+            if (loading) return <SkeletonLoader />;
+
+            return (
+                <div className="page-fade">
+                    <div className="page-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                        <div>
+                            <h1 className="page-title">Authentication</h1>
+                            <p className="page-subtitle">Manage users and access control</p>
+                        </div>
+                        <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}>
+                            {showCreate ? 'Cancel' : '+ Add User'}
+                        </button>
+                    </div>
+
+                    {showCreate && (
+                        <div className="card" style={{marginBottom: '1.5rem'}}>
+                            <div className="card-header"><h3 className="card-title">Create New User</h3></div>
+                            <div className="card-body">
+                                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem'}}>
+                                    <div className="form-group">
+                                        <label className="form-label">Email *</label>
+                                        <input className="form-input" type="email" placeholder="user@example.com"
+                                            value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Display Name</label>
+                                        <input className="form-input" type="text" placeholder="John Doe"
+                                            value={newUser.display_name} onChange={e => setNewUser({...newUser, display_name: e.target.value})} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Password * <span style={{color:'var(--text-muted)',fontWeight:400}}>(min 8 characters)</span></label>
+                                        <input className="form-input" type="password" placeholder="••••••••"
+                                            value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Role</label>
+                                        <select className="form-select" value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})}>
+                                            <option value="admin">Admin</option>
+                                            <option value="user">User</option>
+                                            <option value="viewer">Viewer</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div style={{marginTop:'1rem',display:'flex',justifyContent:'flex-end'}}>
+                                    <button className="btn btn-primary" onClick={handleCreate} disabled={creating}>
+                                        {creating ? 'Creating...' : 'Create User'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {users.length === 0 ? (
+                        <div className="empty-state">
+                            <div className="empty-state-icon">{Icons.auth}</div>
+                            <div className="empty-state-title">No registered users</div>
+                            <div className="empty-state-text">Click "Add User" above or users will appear here once they register or log in via OAuth.</div>
+                        </div>
+                    ) : (
+                        <div className="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Email</th>
+                                        <th>Provider</th>
+                                        <th>Role</th>
+                                        <th>Status</th>
+                                        <th>Created</th>
+                                        <th style={{textAlign:'right'}}>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {users.map(user => (
+                                        <tr key={user.id} style={{opacity: actionLoading === user.id ? 0.5 : 1}}>
+                                            <td style={{fontWeight: 500, color: 'var(--text-primary)'}}>
+                                                <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
+                                                    {user.avatar_url ? (
+                                                        <img src={user.avatar_url} alt="" style={{width:28,height:28,borderRadius:'50%'}} />
+                                                    ) : (
+                                                        <div style={{width:28,height:28,borderRadius:'50%',background:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:'0.75rem',fontWeight:600}}>
+                                                            {(user.display_name || user.email || '?')[0].toUpperCase()}
+                                                        </div>
+                                                    )}
+                                                    {user.display_name || user.email.split('@')[0]}
+                                                </div>
+                                            </td>
+                                            <td>{user.email}</td>
+                                            <td><span className="badge badge-gray">{user.provider || 'local'}</span></td>
+                                            <td>
+                                                <select className="form-select" style={{padding:'0.25rem 0.5rem',fontSize:'0.8rem',minWidth:'auto',width:'auto'}}
+                                                    value={(user.roles && user.roles[0]) || 'user'}
+                                                    onChange={e => changeRole(user, e.target.value)}
+                                                    disabled={actionLoading === user.id}>
+                                                    <option value="admin">admin</option>
+                                                    <option value="user">user</option>
+                                                    <option value="viewer">viewer</option>
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <span className={`badge ${user.active ? 'badge-green' : 'badge-red'}`} style={{cursor:'pointer'}} onClick={() => toggleActive(user)}>
+                                                    <span className={`badge-dot ${user.active ? 'green' : 'red'}`}></span>
+                                                    {user.active ? 'Active' : 'Inactive'}
+                                                </span>
+                                            </td>
+                                            <td>{user.created_at ? new Date(user.created_at).toLocaleDateString() : '—'}</td>
+                                            <td style={{textAlign:'right'}}>
+                                                <button className="btn btn-sm" style={{color:'var(--error)',background:'none',border:'1px solid var(--error)',padding:'0.25rem 0.5rem',fontSize:'0.75rem',borderRadius:'6px',cursor:'pointer'}}
+                                                    onClick={() => deleteUser(user)} disabled={actionLoading === user.id}>
+                                                    Delete
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        /* ═══════════════════════════════════════════════════════
+           ENVIRONMENT / SERVER SETTINGS
+           ═══════════════════════════════════════════════════════ */
+        const EnvironmentSettings = () => {
+            const [serverConfig, setServerConfig] = useState(null);
+            const [projectConfig, setProjectConfig] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [savingServer, setSavingServer] = useState(false);
+            const [savingProject, setSavingProject] = useState(false);
+            const [restartBanner, setRestartBanner] = useState(false);
+
+            useEffect(() => {
+                Promise.all([
+                    api.get('/api/v1/admin/config/server'),
+                    api.get('/api/v1/admin/config/project')
+                ]).then(([s, p]) => {
+                    setServerConfig(s);
+                    setProjectConfig(p);
+                }).catch(() => window.showToast('Failed to load environment settings', 'error'))
+                .finally(() => setLoading(false));
+            }, []);
+
+            const handleServerChange = (field, value) => setServerConfig(prev => ({ ...prev, [field]: value }));
+            const handleProjectChange = (field, value) => setProjectConfig(prev => ({ ...prev, [field]: value }));
+
+            const handleSaveServer = async () => {
+                try {
+                    setSavingServer(true);
+                    const result = await api.put('/api/v1/admin/config/server', serverConfig);
+                    window.showToast('Server settings saved', 'success');
+                    if (result.restart_required) setRestartBanner(true);
+                } catch (err) { window.showToast(err?.message || 'Failed to save', 'error'); }
+                finally { setSavingServer(false); }
+            };
+
+            const handleSaveProject = async () => {
+                try {
+                    setSavingProject(true);
+                    await api.put('/api/v1/admin/config/project', projectConfig);
+                    window.showToast('Project settings saved', 'success');
+                } catch (err) { window.showToast(err?.message || 'Failed to save', 'error'); }
+                finally { setSavingProject(false); }
+            };
+
+            if (loading) return <SkeletonLoader />;
+
+            return (
+                <div className="page-fade">
+                    <div className="page-header">
+                        <h1 className="page-title">Environment</h1>
+                        <p className="page-subtitle">Server, project, and runtime settings — replaces .env file configuration</p>
+                    </div>
+
+                    {restartBanner && (
+                        <div className="callout" style={{borderLeftColor: 'var(--warning)', background: 'var(--warning-bg)', marginBottom: '1.25rem'}}>
+                            <div className="callout-title" style={{color: 'var(--warning)'}}>Restart Required</div>
+                            <div className="callout-text">Some changes (ports, CORS, DB path) require a server restart to take effect.</div>
+                        </div>
+                    )}
+
+                    {/* Server Settings */}
+                    {serverConfig && (
+                        <div className="card">
+                            <div style={{display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem'}}>
+                                <span style={{color: 'var(--accent-light)'}}>{Icons.server}</span>
+                                <div>
+                                    <div style={{fontSize: '0.95rem', fontWeight: 600}}>Server Settings</div>
+                                    <div style={{fontSize: '0.72rem', color: 'var(--text-dim)'}}>Runtime, network, and database configuration</div>
+                                </div>
+                            </div>
+
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label className="form-label">Log Level</label>
+                                    <select className="form-select" value={serverConfig.log_level || 'info'} onChange={e => handleServerChange('log_level', e.target.value)}>
+                                        <option value="debug">Debug</option>
+                                        <option value="info">Info</option>
+                                        <option value="warning">Warning</option>
+                                        <option value="error">Error</option>
+                                        <option value="critical">Critical</option>
+                                    </select>
+                                    <span className="form-helper">Controls verbosity of server logs (AGENT_LOG_LEVEL)</span>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Config File</label>
+                                    <input type="text" className="form-input" value={serverConfig.config_file || '.agent.json'} onChange={e => handleServerChange('config_file', e.target.value)} placeholder=".agent.json" />
+                                    <span className="form-helper">Path to config file (AGENT_CONFIG_FILE)</span>
+                                </div>
+                            </div>
+
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label className="form-label">API Port</label>
+                                    <input type="number" className="form-input" value={serverConfig.api_port ?? 3000} onChange={e => handleServerChange('api_port', parseInt(e.target.value))} placeholder="3000" />
+                                    <span className="form-helper">Main API server port (AGENT_PORT) — restart required</span>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Admin Port</label>
+                                    <input type="number" className="form-input" value={serverConfig.admin_port ?? 3001} onChange={e => handleServerChange('admin_port', parseInt(e.target.value))} placeholder="3001" />
+                                    <span className="form-helper">Admin panel port (AGENT_ADMIN_PORT) — restart required</span>
+                                </div>
+                            </div>
+
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label className="form-label">CORS Origins</label>
+                                    <input type="text" className="form-input" value={serverConfig.cors_origins || ''} onChange={e => handleServerChange('cors_origins', e.target.value)} placeholder="http://localhost:3000, http://localhost:3001" />
+                                    <span className="form-helper">Comma-separated allowed origins (AGENT_CORS_ORIGINS) — restart required</span>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Admin DB Path</label>
+                                    <input type="text" className="form-input" value={serverConfig.admin_db_path || '.agent_admin.db'} onChange={e => handleServerChange('admin_db_path', e.target.value)} placeholder=".agent_admin.db" />
+                                    <span className="form-helper">SQLite database for keys and auth (AGENT_ADMIN_DB_PATH) — restart required</span>
+                                </div>
+                            </div>
+
+                            <button className="btn btn-primary" onClick={handleSaveServer} disabled={savingServer} style={{marginTop: '0.25rem'}}>
+                                {savingServer ? 'Saving...' : 'Save Server Settings'}
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Project Settings */}
+                    {projectConfig && (
+                        <div className="card">
+                            <div style={{display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem'}}>
+                                <span style={{color: 'var(--accent-light)'}}>{Icons.project}</span>
+                                <div>
+                                    <div style={{fontSize: '0.95rem', fontWeight: 600}}>Project Settings</div>
+                                    <div style={{fontSize: '0.72rem', color: 'var(--text-dim)'}}>Repository and language configuration</div>
+                                </div>
+                            </div>
+
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label className="form-label">Project ID</label>
+                                    <input type="text" className="form-input" value={projectConfig.project_id || 'default'} onChange={e => handleProjectChange('project_id', e.target.value)} placeholder="default" />
+                                    <span className="form-helper">Unique identifier for this project (AGENT_PROJECT_ID)</span>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Project Directory</label>
+                                    <input type="text" className="form-input" value={projectConfig.project_dir || '.'} onChange={e => handleProjectChange('project_dir', e.target.value)} placeholder="." />
+                                    <span className="form-helper">Root directory of the project (AGENT_PROJECT_DIR)</span>
+                                </div>
+                            </div>
+
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label className="form-label">Language</label>
+                                    <select className="form-select" value={projectConfig.language || 'python'} onChange={e => handleProjectChange('language', e.target.value)}>
+                                        <option value="python">Python</option>
+                                        <option value="javascript">JavaScript</option>
+                                        <option value="typescript">TypeScript</option>
+                                        <option value="go">Go</option>
+                                        <option value="rust">Rust</option>
+                                        <option value="java">Java</option>
+                                    </select>
+                                    <span className="form-helper">Primary language (AGENT_LANGUAGE)</span>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Framework</label>
+                                    <input type="text" className="form-input" value={projectConfig.framework || ''} onChange={e => handleProjectChange('framework', e.target.value)} placeholder="e.g., fastapi, react, django" />
+                                    <span className="form-helper">Optional framework name (AGENT_FRAMEWORK)</span>
+                                </div>
+                            </div>
+
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label className="form-label">Base Branch</label>
+                                    <input type="text" className="form-input" value={projectConfig.base_branch || 'main'} onChange={e => handleProjectChange('base_branch', e.target.value)} placeholder="main" />
+                                    <span className="form-helper">Default git branch (AGENT_BASE_BRANCH)</span>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Test Framework</label>
+                                    <input type="text" className="form-input" value={projectConfig.test_framework || ''} onChange={e => handleProjectChange('test_framework', e.target.value)} placeholder="e.g., pytest, jest, go test" />
+                                    <span className="form-helper">Testing framework (AGENT_TEST_FRAMEWORK)</span>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Package Manager</label>
+                                    <input type="text" className="form-input" value={projectConfig.package_manager || ''} onChange={e => handleProjectChange('package_manager', e.target.value)} placeholder="e.g., pip, npm, yarn, cargo" />
+                                    <span className="form-helper">Package manager (AGENT_PACKAGE_MANAGER)</span>
+                                </div>
+                            </div>
+
+                            <button className="btn btn-primary" onClick={handleSaveProject} disabled={savingProject} style={{marginTop: '0.25rem'}}>
+                                {savingProject ? 'Saving...' : 'Save Project Settings'}
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Info callout */}
+                    <div className="callout" style={{marginTop: '0.5rem'}}>
+                        <div className="callout-title">About Environment Settings</div>
+                        <div className="callout-text">
+                            These settings replace the <code style={{background: 'var(--bg-overlay)', padding: '0.1rem 0.3rem', borderRadius: '3px', fontSize: '0.78rem'}}>.env</code> file.
+                            All changes are persisted to <code style={{background: 'var(--bg-overlay)', padding: '0.1rem 0.3rem', borderRadius: '3px', fontSize: '0.78rem'}}>.agent.json</code> automatically.
+                            API keys are managed separately on the LLM Providers page and stored securely in the admin database.
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        /* ═══════════════════════════════════════════════════════
+           ADMIN PANEL (MAIN)
+           ═══════════════════════════════════════════════════════ */
+        const AdminPanel = () => {
+            const [sidebarMini, setSidebarMini] = useState(false);
+            const [mobileOpen, setMobileOpen] = useState(false);
+            const [activeSection, setActiveSection] = useState('dashboard');
+            const [currentUser, setCurrentUser] = useState(_currentUser);
+            const [loggingOut, setLoggingOut] = useState(false);
+            const [cmdOpen, setCmdOpen] = useState(false);
+
+            useEffect(() => {
+                if (_currentUser) setCurrentUser(_currentUser);
+                const handler = (e) => setCurrentUser(e.detail);
+                window.addEventListener('userLoaded', handler);
+                return () => window.removeEventListener('userLoaded', handler);
+            }, []);
+
+            useEffect(() => {
+                window._setActiveSection = setActiveSection;
+                return () => { window._setActiveSection = null; };
+            }, []);
+
+            // Keyboard shortcut: Cmd+K
+            useEffect(() => {
+                const handler = (e) => {
+                    if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setCmdOpen(o => !o); }
+                    if (e.key === 'Escape') setCmdOpen(false);
+                };
+                window.addEventListener('keydown', handler);
+                return () => window.removeEventListener('keydown', handler);
+            }, []);
+
+            const handleLogout = async () => {
+                try {
+                    setLoggingOut(true);
+                    if (currentUser?.provider !== 'api_token') {
+                        await fetch('/auth/logout?context=admin', { method: 'POST', credentials: 'include' });
+                    }
+                } catch {}
+                window.location.href = '/login?redirect=/admin';
+            };
+
+            const sections = {
+                dashboard: { label: 'Dashboard', component: Dashboard, icon: Icons.dashboard, section: 'Overview' },
+                environment: { label: 'Environment', component: EnvironmentSettings, icon: Icons.server, section: 'Configuration' },
+                project: { label: 'Project', component: ProjectSettings, icon: Icons.project, section: 'Configuration' },
+                llm: { label: 'LLM Providers', component: LLMProviders, icon: Icons.llm, section: 'Configuration' },
+                routing: { label: 'Routing', component: ModelRouting, icon: Icons.routing, section: 'Configuration' },
+                cost: { label: 'Cost & Budgets', component: CostBudgets, icon: Icons.cost, section: 'Configuration' },
+                safety: { label: 'Safety', component: SafetyApprovals, icon: Icons.safety, section: 'Configuration' },
+                quality: { label: 'Quality Gates', component: QualityGates, icon: Icons.quality, section: 'Configuration' },
+                observability: { label: 'Observability', component: Observability, icon: Icons.observability, section: 'Configuration' },
+                stories: { label: 'Stories', component: Stories, icon: Icons.stories, section: 'Operations' },
+                auth: { label: 'Auth & Users', component: Authentication, icon: Icons.auth, section: 'Access' }
+            };
+
+            const navSections = [
+                { label: 'Overview', items: ['dashboard'] },
+                { label: 'Configuration', items: ['environment', 'project', 'llm', 'routing', 'cost', 'safety', 'quality', 'observability'] },
+                { label: 'Operations', items: ['stories'] },
+                { label: 'Access', items: ['auth'] }
+            ];
+
+            const CurrentComponent = sections[activeSection]?.component || Dashboard;
+            const userInitials = currentUser ? (currentUser.display_name || currentUser.name || currentUser.email || '?').charAt(0).toUpperCase() : '?';
+
+            return (
+                <div className="app-container">
+                    {/* Mobile Backdrop */}
+                    <div className={`mobile-backdrop ${mobileOpen ? 'show' : ''}`} onClick={() => setMobileOpen(false)}></div>
+
+                    {/* Sidebar */}
+                    <div className={`sidebar ${sidebarMini ? 'mini' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
+                        <div className="sidebar-toggle" onClick={() => setSidebarMini(!sidebarMini)} title={sidebarMini ? 'Expand' : 'Collapse'}>
+                            {sidebarMini ? Icons.chevronRight : Icons.chevronLeft}
+                        </div>
+
+                        <div className="sidebar-header">
+                            <div className="sidebar-brand-icon">A</div>
+                            <div className="sidebar-brand-text">
+                                <div>Auto-Dev</div>
+                                <div className="sidebar-brand-sub">Admin Panel</div>
+                            </div>
+                        </div>
+
+                        <nav className="sidebar-nav">
+                            {navSections.map(section => (
+                                <div key={section.label} className="nav-section">
+                                    <div className="nav-section-label">{section.label}</div>
+                                    {section.items.map(key => (
+                                        <div
+                                            key={key}
+                                            className={`nav-item ${activeSection === key ? 'active' : ''}`}
+                                            onClick={() => { setActiveSection(key); setMobileOpen(false); }}
+                                            title={sidebarMini ? sections[key].label : undefined}
+                                        >
+                                            <span className="nav-icon">{sections[key].icon}</span>
+                                            <span className="nav-label">{sections[key].label}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ))}
+                        </nav>
+
+                        <div className="sidebar-footer">
+                            <span style={{opacity: 0.5}}>v1.0.0</span>
+                            <span className="sidebar-footer-text" style={{marginLeft: 'auto', opacity: 0.4}}>Auto-Dev Agent</span>
+                        </div>
+                    </div>
+
+                    {/* Main */}
+                    <div className="main-content">
+                        <header className="header">
+                            <div className="header-left">
+                                <button className="btn btn-ghost mobile-toggle" onClick={() => setMobileOpen(!mobileOpen)} style={{padding: '0.4rem'}}>
+                                    {Icons.menu}
+                                </button>
+                                <div>
+                                    <div className="header-title">{sections[activeSection]?.label}</div>
+                                    <div className="header-breadcrumb">
+                                        <span>Admin</span>
+                                        <span className="header-breadcrumb-sep">/</span>
+                                        <span style={{color: 'var(--text-secondary)'}}>{sections[activeSection]?.label}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="header-right">
+                                <div className="header-search" onClick={() => setCmdOpen(true)}>
+                                    {Icons.search}
+                                    <span>Search...</span>
+                                    <kbd>{navigator.platform?.includes('Mac') ? '\u2318' : 'Ctrl'}+K</kbd>
+                                </div>
+
+                                <div className="user-menu" onClick={handleLogout} title={loggingOut ? 'Logging out...' : 'Click to logout'} style={{opacity: loggingOut ? 0.5 : 1}}>
+                                    <div className="user-avatar">{userInitials}</div>
+                                    <span className="user-name">{currentUser?.display_name || currentUser?.name || currentUser?.email || 'Admin'}</span>
+                                    <span style={{color: 'var(--text-dim)'}}>{Icons.logout}</span>
+                                </div>
+                            </div>
+                        </header>
+
+                        <div className="content-area">
+                            <CurrentComponent key={activeSection} />
+                        </div>
+                    </div>
+
+                    {/* Command Palette */}
+                    <CommandPalette isOpen={cmdOpen} onClose={() => setCmdOpen(false)} onNavigate={setActiveSection} sections={sections} />
+
+                    <ToastManager />
+                </div>
+            );
+        };
+
+        ReactDOM.render(<AdminPanel />, document.getElementById('root'));
+    </script>
+</body>
+</html>

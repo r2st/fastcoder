@@ -1,0 +1,2986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design — Autonomous Software Development Agent</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230f1117'/%3E%3Ccircle cx='16' cy='12' r='5' fill='none' stroke='%236c8cff' stroke-width='2'/%3E%3Cpath d='M8 26c0-4.4 3.6-8 8-8s8 3.6 8 8' fill='none' stroke='%236c8cff' stroke-width='2' stroke-linecap='round'/%3E%3Cpath d='M20 10l4-4M22 6h2v2' fill='none' stroke='%2334d399' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #232736;
+    --border: #2e3348;
+    --text: #e2e4ed;
+    --text-muted: #8b8fa7;
+    --accent: #6c8cff;
+    --accent2: #a78bfa;
+    --accent3: #34d399;
+    --accent4: #f59e0b;
+    --danger: #ef4444;
+    --code-bg: #161822;
+    --sidebar-w: 280px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+  }
+
+  /* ── Sidebar TOC ── */
+  .sidebar {
+    position: fixed;
+    top: 0; left: 0;
+    width: var(--sidebar-w);
+    height: 100vh;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    z-index: 100;
+    padding: 24px 0;
+    transition: transform 0.3s ease;
+  }
+  .sidebar-brand {
+    padding: 0 20px 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .sidebar-brand .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .sidebar-brand .logo svg { flex-shrink: 0; }
+  .sidebar-brand .tagline {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 6px;
+    line-height: 1.4;
+  }
+  .sidebar h2 {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    padding: 0 20px;
+    margin-bottom: 8px;
+    border: none;
+  }
+  .sidebar ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .sidebar li a {
+    display: block;
+    padding: 7px 20px 7px 20px;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.83rem;
+    border-left: 3px solid transparent;
+    transition: all 0.15s;
+    line-height: 1.4;
+  }
+  .sidebar li a:hover {
+    color: var(--text);
+    background: rgba(108,140,255,0.06);
+  }
+  .sidebar li a.active {
+    color: var(--accent);
+    border-left-color: var(--accent);
+    background: rgba(108,140,255,0.08);
+    font-weight: 600;
+  }
+  .sidebar li a .num {
+    display: inline-block;
+    width: 22px;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  /* ── Mobile hamburger ── */
+  .menu-toggle {
+    display: none;
+    position: fixed;
+    top: 14px; left: 14px;
+    z-index: 200;
+    width: 42px; height: 42px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    color: var(--text);
+    font-size: 1.3rem;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .menu-toggle svg { width: 20px; height: 20px; stroke: var(--text); fill: none; stroke-width: 2; stroke-linecap: round; }
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 90;
+  }
+  .overlay.show { display: block; }
+
+  /* ── Main content ── */
+  .main {
+    margin-left: var(--sidebar-w);
+    min-height: 100vh;
+  }
+
+  /* ── Hero ── */
+  .hero {
+    background: linear-gradient(135deg, #1a1d2f 0%, #0f1117 50%, #1a1028 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 60px 48px 48px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -200px; right: -200px;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(108,140,255,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero h1 {
+    font-size: 2.4rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, #e2e4ed, #6c8cff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero .subtitle {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    max-width: 700px;
+  }
+  .meta-row {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    margin-top: 24px;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+  }
+  .meta-row span { display: flex; align-items: center; gap: 6px; }
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  /* ── Content area ── */
+  .content { max-width: 900px; padding: 40px 48px 80px; }
+  section { margin-bottom: 48px; }
+  section h2 {
+    font-size: 1.45rem;
+    font-weight: 700;
+    margin-bottom: 18px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--border);
+    color: var(--text);
+  }
+  h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 24px 0 10px;
+    color: var(--accent2);
+  }
+  h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin: 18px 0 8px;
+    color: var(--text);
+  }
+  p { margin-bottom: 12px; }
+  ul, ol { margin: 0 0 14px 22px; }
+  li { margin-bottom: 5px; }
+
+  /* ── Diagrams ── */
+  .diagram-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    margin: 20px 0 28px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .diagram-wrap .caption {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 14px;
+    font-style: italic;
+  }
+  svg text { font-family: 'Inter', sans-serif; }
+
+  /* ── Tables ── */
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 14px 0 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.87rem;
+    min-width: 480px;
+  }
+  th {
+    background: var(--surface2);
+    text-align: left;
+    padding: 10px 14px;
+    font-weight: 600;
+    color: var(--accent);
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+  }
+  td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  tr:hover td { background: rgba(108,140,255,0.03); }
+
+  /* ── Code ── */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    margin: 10px 0 18px;
+  }
+  code {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.84em;
+  }
+  p code, li code {
+    background: var(--surface2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--accent3);
+  }
+
+  /* ── Callouts ── */
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: rgba(108,140,255,0.06);
+    padding: 14px 18px;
+    border-radius: 0 8px 8px 0;
+    margin: 14px 0 20px;
+    font-size: 0.9rem;
+  }
+  .callout.warn { border-left-color: var(--accent4); background: rgba(245,158,11,0.06); }
+  .callout.danger { border-left-color: var(--danger); background: rgba(239,68,68,0.06); }
+  .callout strong { color: var(--accent); }
+  .callout.warn strong { color: var(--accent4); }
+
+  /* ── Arch grid ── */
+  .arch-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    margin: 18px 0;
+  }
+  .arch-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    text-align: center;
+    transition: border-color 0.2s;
+  }
+  .arch-box:hover { border-color: var(--accent); }
+  .arch-box .icon { font-size: 1.5rem; margin-bottom: 6px; }
+  .arch-box .label { font-weight: 600; font-size: 0.9rem; margin-bottom: 4px; }
+  .arch-box .desc { font-size: 0.78rem; color: var(--text-muted); }
+  .arch-box.highlight { border-color: var(--accent); box-shadow: 0 0 20px rgba(108,140,255,0.1); }
+  .arch-full { grid-column: 1 / -1; }
+
+  /* ── Back to top ── */
+  .back-top {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    width: 40px; height: 40px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 1.1rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 50;
+  }
+  .back-top.show { opacity: 1; }
+  .back-top:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ── Footer ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 20px 48px;
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  /* ── Back to index button ── */
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-decoration: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    transition: all 0.15s;
+    margin-bottom: 18px;
+  }
+  .back-link:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: rgba(108,140,255,0.06);
+  }
+  .back-link svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+  /* ══════════════ RESPONSIVE ══════════════ */
+  @media (max-width: 900px) {
+    :root { --sidebar-w: 260px; }
+    .hero { padding: 48px 32px 36px; }
+    .hero h1 { font-size: 1.8rem; }
+    .content { padding: 32px 32px 60px; }
+  }
+
+  @media (max-width: 768px) {
+    .sidebar {
+      transform: translateX(-100%);
+      width: 280px;
+    }
+    .sidebar.open { transform: translateX(0); }
+    .menu-toggle { display: flex; }
+    .main { margin-left: 0; }
+    .hero { padding: 56px 20px 32px; }
+    .hero h1 { font-size: 1.5rem; }
+    .hero .subtitle { font-size: 0.92rem; }
+    .content { padding: 24px 20px 60px; }
+    .arch-grid { grid-template-columns: 1fr; }
+    .arch-full { grid-column: 1; }
+    .meta-row { gap: 12px; flex-direction: column; }
+    section h2 { font-size: 1.25rem; }
+    pre { padding: 14px 12px; font-size: 0.78rem; }
+    footer { padding: 16px 20px; }
+    table { font-size: 0.82rem; }
+    th, td { padding: 8px 12px; }
+    .callout { padding: 12px 14px; font-size: 0.85rem; }
+    h3 { font-size: 1rem; }
+    .diagram-wrap svg { min-width: 600px; }
+  }
+
+  @media (max-width: 480px) {
+    .hero { padding: 52px 16px 24px; }
+    .hero h1 { font-size: 1.3rem; }
+    .hero .subtitle { font-size: 0.85rem; }
+    .content { padding: 20px 16px 48px; }
+    .diagram-wrap { padding: 16px 10px; }
+    .table-wrap { border-radius: 6px; }
+    th, td { padding: 7px 8px; font-size: 0.78rem; }
+    pre { font-size: 0.74rem; padding: 12px 10px; }
+    section h2 { font-size: 1.15rem; }
+    h3 { font-size: 0.95rem; }
+    .arch-box { padding: 14px; }
+    .arch-box .label { font-size: 0.85rem; }
+    .arch-box .desc { font-size: 0.74rem; }
+    ul, ol { margin-left: 18px; }
+    li { font-size: 0.9rem; }
+    .back-link { font-size: 0.78rem; padding: 6px 12px; }
+  }
+
+  /* Scrollbar styling */
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body id="top">
+
+<!-- ═══ Mobile menu toggle ═══ -->
+<button class="menu-toggle" onclick="toggleSidebar()" aria-label="Toggle navigation">
+  <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+</button>
+<div class="overlay" onclick="toggleSidebar()"></div>
+
+<!-- ═══ Sidebar TOC ═══ -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <a href="#top" class="logo">
+      <svg width="24" height="24" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <rect width="32" height="32" rx="6" fill="#0f1117"/>
+        <circle cx="16" cy="12" r="5" fill="none" stroke="#6c8cff" stroke-width="2"/>
+        <path d="M8 26c0-4.4 3.6-8 8-8s8 3.6 8 8" fill="none" stroke="#6c8cff" stroke-width="2" stroke-linecap="round"/>
+        <path d="M20 10l4-4M22 6h2v2" fill="none" stroke="#34d399" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Auto Dev Agent
+    </a>
+    <div class="tagline">System Design &amp; Architecture — v3.1</div>
+  </div>
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#overview" data-section="overview"><span class="num">1.</span>Executive Overview</a></li>
+    <li><a href="#goals" data-section="goals"><span class="num">2.</span>Goals &amp; Principles</a></li>
+    <li><a href="#arch" data-section="arch"><span class="num">3.</span>High-Level Architecture</a></li>
+    <li><a href="#components" data-section="components"><span class="num">4.</span>Component Deep-Dive</a></li>
+    <li><a href="#codebase-intel" data-section="codebase-intel"><span class="num">5.</span>Codebase Intelligence</a></li>
+    <li><a href="#tool-env" data-section="tool-env"><span class="num">6.</span>Tool &amp; Environment Layer</a></li>
+    <li><a href="#agent-loop" data-section="agent-loop"><span class="num">7.</span>Core Agent Loop</a></li>
+    <li><a href="#context-mgmt" data-section="context-mgmt"><span class="num">8.</span>Context Management</a></li>
+    <li><a href="#error-taxonomy" data-section="error-taxonomy"><span class="num">9.</span>Error Taxonomy &amp; Recovery</a></li>
+    <li><a href="#data-model" data-section="data-model"><span class="num">10.</span>Data Model</a></li>
+    <li><a href="#api" data-section="api"><span class="num">11.</span>API Specifications</a></li>
+    <li><a href="#llm" data-section="llm"><span class="num">12.</span>LLM Integration</a></li>
+    <li><a href="#sequence" data-section="sequence"><span class="num">13.</span>Sequence Diagrams</a></li>
+    <li><a href="#git-workflow" data-section="git-workflow"><span class="num">14.</span>Git &amp; SCM Workflow</a></li>
+    <li><a href="#multi-agent" data-section="multi-agent"><span class="num">15.</span>Multi-Agent Collaboration</a></li>
+    <li><a href="#safety" data-section="safety"><span class="num">16.</span>Safety &amp; Guardrails</a></li>
+    <li><a href="#quality-gates" data-section="quality-gates"><span class="num">17.</span>Quality Gates</a></li>
+    <li><a href="#deploy" data-section="deploy"><span class="num">18.</span>Deployment Architecture</a></li>
+    <li><a href="#observability" data-section="observability"><span class="num">19.</span>Observability</a></li>
+    <li><a href="#risks" data-section="risks"><span class="num">20.</span>Risks &amp; Mitigations</a></li>
+    <li><a href="#roadmap" data-section="roadmap"><span class="num">21.</span>Implementation Roadmap</a></li>
+    <li><a href="#prompt-engineering" data-section="prompt-engineering"><span class="num">22.</span>Prompt Engineering &amp; Reasoning</a></li>
+    <li><a href="#memory-arch" data-section="memory-arch"><span class="num">23.</span>Advanced Memory Architecture</a></li>
+    <li><a href="#eval-framework" data-section="eval-framework"><span class="num">24.</span>Evaluation &amp; Benchmarking</a></li>
+    <li><a href="#threat-model" data-section="threat-model"><span class="num">25.</span>Security Threat Model</a></li>
+    <li><a href="#perf-optimization" data-section="perf-optimization"><span class="num">26.</span>Performance &amp; Caching</a></li>
+    <li><a href="#formal-verification" data-section="formal-verification"><span class="num">27.</span>Formal Verification</a></li>
+    <li><a href="#advanced-deploy" data-section="advanced-deploy"><span class="num">28.</span>Advanced Deployment Strategies</a></li>
+    <li><a href="#distributed-orchestration" data-section="distributed-orchestration"><span class="num">29.</span>Distributed Orchestration</a></li>
+    <li><a href="#cost-optimization" data-section="cost-optimization"><span class="num">30.</span>Cost Optimization Engine</a></li>
+  </ol>
+</nav>
+
+<!-- ═══ Main content ═══ -->
+<div class="main">
+
+  <!-- Hero -->
+  <header class="hero">
+    <a href="index.html" class="back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      Back to Learning Hub
+    </a>
+    <h1>Autonomous Software Development Agent</h1>
+    <p class="subtitle">
+      System design for an AI agent that receives user stories and autonomously writes code,
+      runs tests, deploys, and iterates — with multi-model LLM support.
+    </p>
+    <div class="meta-row">
+      <span><strong>Version:</strong> 3.1</span>
+      <span><strong>Date:</strong> April 2, 2026</span>
+      <span><strong>Author:</strong> Suman</span>
+    </div>
+  </header>
+
+  <div class="content">
+
+<!-- ═══ 1 ═══ -->
+<section id="overview">
+  <h2>1. Executive Overview</h2>
+  <p>
+    This document describes the architecture of an <strong>Autonomous Software Development Agent</strong> — a system that accepts user stories as its sole input and autonomously performs the full software development lifecycle: planning, code generation, testing, deployment, monitoring, and self-improvement.
+  </p>
+  <p>
+    The agent operates in a continuous loop. It decomposes user stories into implementation tasks, generates code, validates it against automated tests it also writes, deploys to a target environment, observes the result, and iterates until acceptance criteria are met. The system is designed to be LLM-agnostic, supporting pluggable model backends including Claude, GPT, open-source models, or any combination.
+  </p>
+  <p>
+    This goes beyond developer-assist copilots and aligns with the "AI software engineer" category demonstrated by systems like <strong>Devin</strong> (Cognition) and open platforms like <strong>OpenHands</strong>, which describe agents interacting with a codebase via editing, command execution, and web browsing inside sandboxed environments. A durable architecture treats the user story as a requirements artefact that must become <em>machine-checkable</em> before the agent is allowed to ship — Behaviour-Driven Development (BDD) provides a well-known bridge from narrative requirements to automated acceptance tests via Given&ndash;When&ndash;Then scenarios, making success measurable rather than subjective.
+  </p>
+  <p>
+    Designing for autonomy also implies designing for <strong>bounded autonomy</strong>. Recent research on agent autonomy highlights that "oversight" is not a UI add-on but an <em>architectural concern</em> spanning permissioning, escalation, and post-deployment monitoring. The system's core loop cannot be tightly coupled to one provider's API quirks — a practical route is to build a model gateway with a common tool-calling abstraction, and optionally adopt interoperability standards such as <strong>MCP (Model Context Protocol)</strong>, which standardises how agentic applications connect to tools and data sources.
+  </p>
+  <div class="callout">
+    <strong>Key Innovation:</strong> Unlike code-generation copilots that assist developers, this agent is the developer. It owns the full loop from story &rarr; running software, with human oversight at configurable checkpoints.
+  </div>
+
+  <h3>What Makes This Different from a Copilot</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Capability</th><th>Copilot / Assistant</th><th>This Autonomous Agent</th></tr></thead>
+    <tbody>
+      <tr><td>Scope of action</td><td>Single file / function at a time</td><td>Full project — multi-file, multi-module changes</td></tr>
+      <tr><td>Error handling</td><td>Human reads errors and re-prompts</td><td>Agent classifies errors, applies targeted fix strategies, retries autonomously</td></tr>
+      <tr><td>Testing</td><td>Human writes or requests tests</td><td>Agent generates tests from acceptance criteria and verifies coverage</td></tr>
+      <tr><td>Deployment</td><td>Not involved</td><td>Deploys to staging, runs smoke tests, monitors health, rolls back on failure</td></tr>
+      <tr><td>Learning</td><td>None (stateless)</td><td>Remembers patterns, error fixes, project conventions across stories</td></tr>
+      <tr><td>Context awareness</td><td>Current file + neighbors</td><td>Full codebase index with semantic search, dependency graph, convention profile</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ═══ 2 ═══ -->
+<section id="goals">
+  <h2>2. Goals &amp; Design Principles</h2>
+
+  <h3>2.1 Primary Goals</h3>
+  <ul>
+    <li><strong>Story-to-Software:</strong> Accept a user story in natural language and produce working, tested, deployed software.</li>
+    <li><strong>Autonomous Iteration:</strong> Detect failures (build errors, test failures, runtime issues) and fix them without human intervention.</li>
+    <li><strong>Self-Improvement:</strong> Learn from past successes and failures to improve code quality and reduce iteration cycles over time.</li>
+    <li><strong>Multi-Model Flexibility:</strong> Route different tasks (planning, coding, reviewing, testing) to different LLMs based on capability and cost.</li>
+  </ul>
+
+  <h3>2.2 Design Principles</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Principle</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td>Loop-First</td><td>Every action feeds back into an evaluation loop. The agent never "finishes" — it converges.</td></tr>
+      <tr><td>Fail-Safe by Default</td><td>The agent operates in sandboxed environments. Destructive actions require explicit approval gates.</td></tr>
+      <tr><td>Observable</td><td>Every decision, code change, and deployment is logged with full provenance for audit and debugging.</td></tr>
+      <tr><td>Model-Agnostic</td><td>The LLM layer is abstracted behind a unified interface. Models can be swapped, mixed, or A/B tested.</td></tr>
+      <tr><td>Incremental Delivery</td><td>The agent works in small increments — committing, testing, and deploying after each coherent change.</td></tr>
+      <tr><td>Human Override</td><td>Configurable approval gates allow humans to review and intervene at any stage of the pipeline.</td></tr>
+      <tr><td>Bounded Autonomy</td><td>Oversight is an architectural concern, not a UI add-on. The system enforces permissioning, escalation policies, and post-deployment monitoring at every layer.</td></tr>
+      <tr><td>Machine-Checkable Specs</td><td>Acceptance criteria are compiled into executable tests (BDD Given&ndash;When&ndash;Then) before any code is written, making "done" objectively measurable.</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ═══ 3 ═══ -->
+<section id="arch">
+  <h2>3. High-Level Architecture</h2>
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 960 620" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:960px;display:block;margin:0 auto">
+      <rect x="20" y="10" width="920" height="90" rx="12" fill="#1e2235" stroke="#2e3348"/>
+      <text x="40" y="40" fill="#8b8fa7" font-size="11" font-weight="600" letter-spacing="0.1em">INPUT LAYER</text>
+      <rect x="50" y="50" width="160" height="40" rx="8" fill="#232736" stroke="#6c8cff" stroke-width="1.5"/>
+      <text x="130" y="75" fill="#e2e4ed" font-size="13" text-anchor="middle" font-weight="600">User Stories</text>
+      <rect x="240" y="50" width="160" height="40" rx="8" fill="#232736" stroke="#6c8cff" stroke-width="1.5"/>
+      <text x="320" y="75" fill="#e2e4ed" font-size="13" text-anchor="middle" font-weight="600">API / CLI / UI</text>
+      <rect x="430" y="50" width="180" height="40" rx="8" fill="#232736" stroke="#6c8cff" stroke-width="1.5"/>
+      <text x="520" y="75" fill="#e2e4ed" font-size="13" text-anchor="middle" font-weight="600">Existing Codebase</text>
+      <rect x="640" y="50" width="160" height="40" rx="8" fill="#232736" stroke="#6c8cff" stroke-width="1.5"/>
+      <text x="720" y="75" fill="#e2e4ed" font-size="13" text-anchor="middle" font-weight="600">Config / Constraints</text>
+      <line x1="480" y1="100" x2="480" y2="130" stroke="#6c8cff" stroke-width="2" marker-end="url(#arrowBlue)"/>
+      <rect x="20" y="130" width="920" height="340" rx="12" fill="#1a1d27" stroke="#2e3348"/>
+      <text x="40" y="158" fill="#8b8fa7" font-size="11" font-weight="600" letter-spacing="0.1em">AGENT CORE</text>
+      <rect x="310" y="170" width="340" height="50" rx="10" fill="#2a2f4a" stroke="#a78bfa" stroke-width="2"/>
+      <text x="480" y="200" fill="#e2e4ed" font-size="14" text-anchor="middle" font-weight="700">Orchestrator (State Machine)</text>
+      <rect x="50" y="250" width="155" height="50" rx="8" fill="#232736" stroke="#34d399" stroke-width="1.5"/>
+      <text x="127" y="280" fill="#e2e4ed" font-size="12" text-anchor="middle" font-weight="600">Story Analyzer</text>
+      <rect x="225" y="250" width="155" height="50" rx="8" fill="#232736" stroke="#34d399" stroke-width="1.5"/>
+      <text x="302" y="280" fill="#e2e4ed" font-size="12" text-anchor="middle" font-weight="600">Planner</text>
+      <rect x="400" y="250" width="155" height="50" rx="8" fill="#232736" stroke="#34d399" stroke-width="1.5"/>
+      <text x="477" y="280" fill="#e2e4ed" font-size="12" text-anchor="middle" font-weight="600">Code Generator</text>
+      <rect x="575" y="250" width="155" height="50" rx="8" fill="#232736" stroke="#34d399" stroke-width="1.5"/>
+      <text x="652" y="280" fill="#e2e4ed" font-size="12" text-anchor="middle" font-weight="600">Test Generator</text>
+      <rect x="750" y="250" width="155" height="50" rx="8" fill="#232736" stroke="#34d399" stroke-width="1.5"/>
+      <text x="827" y="280" fill="#e2e4ed" font-size="12" text-anchor="middle" font-weight="600">Code Reviewer</text>
+      <rect x="50" y="330" width="155" height="50" rx="8" fill="#232736" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="127" y="360" fill="#e2e4ed" font-size="12" text-anchor="middle" font-weight="600">Build Runner</text>
+      <rect x="225" y="330" width="155" height="50" rx="8" fill="#232736" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="302" y="360" fill="#e2e4ed" font-size="12" text-anchor="middle" font-weight="600">Test Runner</text>
+      <rect x="400" y="330" width="155" height="50" rx="8" fill="#232736" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="477" y="360" fill="#e2e4ed" font-size="12" text-anchor="middle" font-weight="600">Deploy Engine</text>
+      <rect x="575" y="330" width="155" height="50" rx="8" fill="#232736" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="652" y="360" fill="#e2e4ed" font-size="12" text-anchor="middle" font-weight="600">Monitor / Verifier</text>
+      <rect x="750" y="330" width="155" height="50" rx="8" fill="#232736" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="827" y="360" fill="#e2e4ed" font-size="12" text-anchor="middle" font-weight="600">Feedback Loop</text>
+      <rect x="50" y="410" width="855" height="45" rx="8" fill="#1e1230" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="6,3"/>
+      <text x="477" y="438" fill="#a78bfa" font-size="13" text-anchor="middle" font-weight="600">LLM Router  &rarr;  Claude  |  GPT  |  Open-Source Models  |  Specialized Models</text>
+      <line x1="480" y1="470" x2="480" y2="500" stroke="#6c8cff" stroke-width="2" marker-end="url(#arrowBlue)"/>
+      <rect x="20" y="500" width="920" height="110" rx="12" fill="#1e2235" stroke="#2e3348"/>
+      <text x="40" y="528" fill="#8b8fa7" font-size="11" font-weight="600" letter-spacing="0.1em">INFRASTRUCTURE &amp; PERSISTENCE</text>
+      <rect x="50" y="540" width="140" height="40" rx="8" fill="#232736" stroke="#4b5563"/>
+      <text x="120" y="565" fill="#e2e4ed" font-size="12" text-anchor="middle" font-weight="500">Sandbox Env</text>
+      <rect x="210" y="540" width="140" height="40" rx="8" fill="#232736" stroke="#4b5563"/>
+      <text x="280" y="565" fill="#e2e4ed" font-size="12" text-anchor="middle" font-weight="500">Git Repository</text>
+      <rect x="370" y="540" width="140" height="40" rx="8" fill="#232736" stroke="#4b5563"/>
+      <text x="440" y="565" fill="#e2e4ed" font-size="12" text-anchor="middle" font-weight="500">Artifact Store</text>
+      <rect x="530" y="540" width="140" height="40" rx="8" fill="#232736" stroke="#4b5563"/>
+      <text x="600" y="565" fill="#e2e4ed" font-size="12" text-anchor="middle" font-weight="500">State Database</text>
+      <rect x="690" y="540" width="140" height="40" rx="8" fill="#232736" stroke="#4b5563"/>
+      <text x="760" y="565" fill="#e2e4ed" font-size="12" text-anchor="middle" font-weight="500">Memory Store</text>
+      <defs>
+        <marker id="arrowBlue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#6c8cff"/>
+        </marker>
+      </defs>
+      <line x1="400" y1="220" x2="127" y2="250" stroke="#34d399" stroke-width="1" opacity="0.4"/>
+      <line x1="440" y1="220" x2="302" y2="250" stroke="#34d399" stroke-width="1" opacity="0.4"/>
+      <line x1="480" y1="220" x2="477" y2="250" stroke="#34d399" stroke-width="1" opacity="0.4"/>
+      <line x1="520" y1="220" x2="652" y2="250" stroke="#34d399" stroke-width="1" opacity="0.4"/>
+      <line x1="560" y1="220" x2="827" y2="250" stroke="#34d399" stroke-width="1" opacity="0.4"/>
+    </svg>
+    <div class="caption">Figure 1 — High-level system architecture showing input layer, agent core with orchestrator and sub-components, LLM router, and infrastructure.</div>
+  </div>
+</section>
+
+<!-- ═══ 4 ═══ -->
+<section id="components">
+  <h2>4. Component Deep-Dive</h2>
+
+  <h3>4.1 Orchestrator (State Machine)</h3>
+  <p>
+    The orchestrator is the brain of the system. It manages the lifecycle of each user story through a finite state machine, deciding which component to invoke next based on the current state, outputs from previous steps, and defined policies. It maintains execution context, handles retries, and enforces maximum iteration limits.
+  </p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Responsibility</th><th>Details</th></tr></thead>
+    <tbody>
+      <tr><td>State Management</td><td>Tracks each story through states: <code>RECEIVED &rarr; ANALYZING &rarr; PLANNING &rarr; CODING &rarr; REVIEWING &rarr; TESTING &rarr; DEPLOYING &rarr; VERIFYING &rarr; DONE / FAILED</code></td></tr>
+      <tr><td>Retry Policy</td><td>Configurable max retries per stage (default: 5). Exponential backoff between attempts. Circuit breaker after repeated failures.</td></tr>
+      <tr><td>Parallelism</td><td>Can process independent stories concurrently. Within a story, some stages can be parallelized (e.g., generating code for independent modules).</td></tr>
+      <tr><td>Approval Gates</td><td>Configurable pause points where human approval is required before proceeding (e.g., before deployment).</td></tr>
+      <tr><td>Context Window</td><td>Manages context passed to LLMs — including relevant code, past errors, and project conventions.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>4.2 Story Analyzer</h3>
+  <p>
+    Parses and enriches incoming user stories. Extracts acceptance criteria, identifies implied constraints, detects dependencies on existing code, and classifies the story type (new feature, bug fix, refactor, infrastructure). Produces a structured <code>StorySpec</code> object consumed by the Planner.
+  </p>
+  <h4>Outputs:</h4>
+  <ul>
+    <li><strong>Acceptance Criteria</strong> — machine-verifiable conditions extracted from the story</li>
+    <li><strong>Dependency Map</strong> — files, modules, APIs the story will likely touch</li>
+    <li><strong>Complexity Score</strong> — estimated effort used for LLM routing and timeout config</li>
+    <li><strong>Ambiguity Flags</strong> — areas where the story is unclear (may trigger a human clarification request)</li>
+  </ul>
+
+  <h3>4.3 Planner</h3>
+  <p>
+    Takes the <code>StorySpec</code> and produces an execution plan: an ordered list of implementation tasks, each with a description, target files, and estimated token budget. The planner also decides the testing strategy (unit, integration, e2e) and whether any infrastructure changes are needed.
+  </p>
+  <pre><code>{
+  "story_id": "STORY-142",
+  "plan": {
+    "tasks": [
+      {
+        "id": "task-1",
+        "action": "create_file",
+        "target": "src/services/payment-processor.ts",
+        "description": "Implement PaymentProcessor service with Stripe integration",
+        "depends_on": [],
+        "estimated_tokens": 4200
+      },
+      {
+        "id": "task-2",
+        "action": "modify_file",
+        "target": "src/routes/checkout.ts",
+        "description": "Add POST /checkout endpoint wiring to PaymentProcessor",
+        "depends_on": ["task-1"],
+        "estimated_tokens": 1800
+      },
+      {
+        "id": "task-3",
+        "action": "create_file",
+        "target": "tests/services/payment-processor.test.ts",
+        "description": "Unit tests for PaymentProcessor with mocked Stripe client",
+        "depends_on": ["task-1"],
+        "estimated_tokens": 3000
+      }
+    ],
+    "testing_strategy": "unit + integration",
+    "deploy_strategy": "staging_first"
+  }
+}</code></pre>
+
+  <h3>4.4 Code Generator</h3>
+  <p>
+    Receives individual tasks from the plan and generates code. It has access to the full project context via the codebase indexer, which provides semantic search over the existing code. The generator respects project conventions (linting rules, naming patterns, architectural boundaries) by loading a project profile at initialization.
+  </p>
+  <div class="callout">
+    <strong>Context Strategy:</strong> The generator uses a hierarchical context approach — project-level conventions are always included, file-level context is loaded on demand, and cross-file references are resolved via the codebase index. This keeps token usage efficient while maintaining coherence.
+  </div>
+
+  <h3>4.5 Test Generator</h3>
+  <p>
+    Writes tests that exercise the generated code against the acceptance criteria. Produces unit tests, integration tests, and where applicable, end-to-end test scripts. The test generator works in two modes: <strong>coverage mode</strong> (aims for high code coverage) and <strong>criteria mode</strong> (directly tests acceptance criteria from the story).
+  </p>
+
+  <h3>4.6 Code Reviewer</h3>
+  <p>
+    Performs automated review of generated code before it enters the test/deploy pipeline. Checks for security vulnerabilities, performance anti-patterns, adherence to project conventions, and logical correctness. Can optionally use a different LLM than the code generator to provide an independent perspective.
+  </p>
+
+  <h3>4.7 Build &amp; Test Runner</h3>
+  <p>
+    Executes build commands and runs the test suite inside a sandboxed environment. Captures stdout/stderr, exit codes, test reports, and coverage data. Parses failures into structured error objects that the orchestrator can feed back to the Code Generator for repair.
+  </p>
+
+  <h3>4.8 Deploy Engine</h3>
+  <p>
+    Handles deployment to the target environment. Supports multiple strategies: direct push to staging, container builds, serverless deploys, and PR-based workflows. The deploy engine is pluggable via adapters — each target environment has a corresponding adapter that implements a standard interface.
+  </p>
+
+  <h3>4.9 Monitor / Verifier</h3>
+  <p>
+    Post-deployment, the verifier runs smoke tests, checks health endpoints, monitors error rates, and validates that the acceptance criteria are met in the live environment. If issues are detected, it feeds structured failure reports back to the orchestrator to trigger a new iteration.
+  </p>
+
+  <h3>4.10 Feedback &amp; Memory Loop</h3>
+  <p>
+    After a story completes (or fails), the feedback loop captures lessons: which patterns worked, common error types encountered, effective fix strategies, and performance metrics. This data is stored in the Memory Store and used to improve future planning and code generation through retrieval-augmented generation (RAG).
+  </p>
+</section>
+
+<!-- ═══ 5 ═══ -->
+<section id="codebase-intel">
+  <h2>5. Codebase Intelligence Engine</h2>
+  <p>
+    A truly autonomous agent cannot generate coherent code without deeply understanding the existing codebase. The Codebase Intelligence Engine is the agent's "memory of the project" — it indexes, analyzes, and provides semantic access to the full repository so that every generated line of code is contextually aware.
+  </p>
+
+  <h3>5.1 Multi-Layer Indexing</h3>
+  <p>
+    The engine builds and maintains several complementary indexes that are refreshed incrementally as the agent makes changes:
+  </p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Index Layer</th><th>What It Captures</th><th>Use Case</th></tr></thead>
+    <tbody>
+      <tr><td>AST Index</td><td>Abstract syntax trees for every source file — functions, classes, interfaces, type signatures, exports</td><td>Understanding function signatures, class hierarchies, available APIs</td></tr>
+      <tr><td>Dependency Graph</td><td>Import/require relationships, module boundaries, circular dependency detection</td><td>Impact analysis — "if I change this file, what else breaks?"</td></tr>
+      <tr><td>Semantic Embeddings</td><td>Vector embeddings of code chunks (functions, classes, blocks) using a code-specific embedding model</td><td>Natural language search — "find the function that handles user authentication"</td></tr>
+      <tr><td>Symbol Table</td><td>Global registry of all exported symbols, their types, file locations, and usage frequency</td><td>Auto-import resolution, avoiding name collisions</td></tr>
+      <tr><td>Convention Profile</td><td>Detected patterns: naming conventions, file structure, error handling patterns, test patterns, comment style</td><td>Ensuring generated code matches the project's style and idioms</td></tr>
+      <tr><td>API Surface Map</td><td>All HTTP endpoints, GraphQL resolvers, CLI commands, event handlers exposed by the project</td><td>Understanding the project's external interface before adding to it</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>5.2 Incremental Re-indexing</h3>
+  <p>
+    After each code generation step, the engine performs a targeted re-index of only the changed files and their direct dependents. This keeps the index fresh without the cost of a full rebuild. The incremental strategy uses file hashes to detect changes and a dependency-aware invalidation algorithm to propagate updates through the graph.
+  </p>
+
+  <h3>5.3 Convention Detection &amp; Enforcement</h3>
+  <p>
+    On first encountering a project, the engine runs a one-time "convention scan" that analyzes existing code to build a <code>ProjectProfile</code>:
+  </p>
+  <pre><code>interface ProjectProfile {
+  language: string;                     // "typescript", "python", etc.
+  framework: string;                    // "nextjs", "django", "express"
+  package_manager: string;              // "npm", "yarn", "pnpm", "pip"
+  test_framework: string;              // "jest", "pytest", "vitest"
+  naming_conventions: {
+    files: "kebab-case" | "camelCase" | "PascalCase" | "snake_case";
+    functions: "camelCase" | "snake_case";
+    classes: "PascalCase";
+    constants: "UPPER_SNAKE_CASE";
+  };
+  directory_structure: DirectoryPattern;  // e.g., "src/[domain]/[type].ts"
+  error_handling_pattern: string;        // "try-catch" | "Result type" | "error callbacks"
+  import_style: "named" | "default" | "barrel";
+  lint_config?: LintConfig;             // Parsed .eslintrc / pyproject.toml
+  formatting_config?: FormatConfig;     // Parsed .prettierrc / black config
+}</code></pre>
+  <p>
+    Every code generation prompt includes a condensed version of this profile, ensuring the agent writes code that looks like a human teammate wrote it — not like AI-generated boilerplate.
+  </p>
+
+  <h3>5.4 Semantic Code Search</h3>
+  <p>
+    When the Code Generator or Planner needs to find relevant code, it queries the Codebase Intelligence Engine using natural language. The engine combines vector similarity search (for semantic matches) with AST-based structural search (for precise type/signature matches) and returns ranked results with surrounding context. This is far more effective than naive string matching for understanding how existing code works.
+  </p>
+</section>
+
+<!-- ═══ 6 ═══ -->
+<section id="tool-env">
+  <h2>6. Tool &amp; Environment Interaction Layer</h2>
+  <p>
+    The agent doesn't just generate code — it must interact with a full development environment: running shell commands, managing files, using git, installing packages, and operating build tools. The Tool Layer provides a secure, structured interface for all these operations.
+  </p>
+  <p>
+    A useful architectural reference is SWE-agent's <strong>Agent-Computer Interface (ACI)</strong>: rather than exposing an unconstrained Linux shell, it provides a small, curated action set for viewing, searching, and editing — and gives concise feedback at every step with guardrails to avoid common mistakes. This demonstrates that <em>the interface to the environment</em> materially impacts both success rate and safety. Tool integration at scale becomes a bottleneck when every model/app pair needs bespoke glue. <strong>MCP (Model Context Protocol)</strong> addresses this as an open protocol that standardises how LLM applications connect to external tools and data sources, reducing fragmentation. In this system, MCP is especially valuable at two boundaries: the <em>context boundary</em> (retrieving repository state, tickets, logs, deployment manifests) and the <em>action boundary</em> (invoking CI/CD, infra changes, secret rotation, feature-flag toggles) — all with uniform discovery and invocation semantics.
+  </p>
+
+  <h3>6.1 Tool Catalog</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Tool</th><th>Operations</th><th>Risk Level</th><th>Approval Required</th></tr></thead>
+    <tbody>
+      <tr><td><strong>File System</strong></td><td><code>read</code>, <code>write</code>, <code>create</code>, <code>delete</code>, <code>move</code>, <code>list</code>, <code>search</code></td><td>Low-Medium</td><td>Only for delete outside sandbox</td></tr>
+      <tr><td><strong>Shell Executor</strong></td><td><code>run_command</code> with stdout/stderr capture, timeout, resource limits</td><td>Medium</td><td>Allowlist-based; unknown commands flagged</td></tr>
+      <tr><td><strong>Git Client</strong></td><td><code>clone</code>, <code>branch</code>, <code>commit</code>, <code>push</code>, <code>diff</code>, <code>log</code>, <code>merge</code>, <code>rebase</code></td><td>Medium</td><td>Force-push and rebase require approval</td></tr>
+      <tr><td><strong>Package Manager</strong></td><td><code>install</code>, <code>update</code>, <code>remove</code>, <code>audit</code> (npm, pip, cargo, etc.)</td><td>Medium</td><td>Major version upgrades require approval</td></tr>
+      <tr><td><strong>Build Tools</strong></td><td><code>build</code>, <code>lint</code>, <code>format</code>, <code>type_check</code></td><td>Low</td><td>No</td></tr>
+      <tr><td><strong>Test Runner</strong></td><td><code>run_all</code>, <code>run_file</code>, <code>run_single</code>, <code>coverage</code></td><td>Low</td><td>No</td></tr>
+      <tr><td><strong>Database Client</strong></td><td><code>migrate</code>, <code>seed</code>, <code>query</code> (test DB only)</td><td>High</td><td>Migrations always require approval</td></tr>
+      <tr><td><strong>HTTP Client</strong></td><td><code>request</code> to whitelisted URLs (APIs, package registries)</td><td>Medium</td><td>New domains require approval</td></tr>
+      <tr><td><strong>Container Runtime</strong></td><td><code>build_image</code>, <code>run_container</code>, <code>compose_up</code></td><td>Medium</td><td>Port exposure requires approval</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>6.2 Command Execution Model</h3>
+  <p>
+    Every tool invocation goes through a structured pipeline: the agent emits a <strong>tool call</strong> as a structured JSON object, the Tool Layer validates it against the allowlist and risk policy, executes it in the sandbox, and returns a structured result including exit code, stdout, stderr, execution time, and any side effects (files changed, packages added).
+  </p>
+  <pre><code>// Tool call from agent
+{
+  "tool": "shell",
+  "command": "npm run test -- --coverage",
+  "working_dir": "/workspace/project",
+  "timeout_ms": 60000,
+  "env": { "NODE_ENV": "test" }
+}
+
+// Structured result
+{
+  "exit_code": 1,
+  "stdout": "Test Suites: 3 passed, 1 failed, 4 total\n...",
+  "stderr": "",
+  "duration_ms": 12340,
+  "side_effects": {
+    "files_written": ["coverage/lcov-report/index.html"],
+    "files_modified": []
+  },
+  "parsed": {
+    "type": "test_report",
+    "passed": 3, "failed": 1, "total": 4,
+    "coverage": 87.3,
+    "failures": [
+      { "suite": "PaymentProcessor", "test": "handles declined cards", "error": "..." }
+    ]
+  }
+}</code></pre>
+
+  <h3>6.3 Output Parsing &amp; Structured Extraction</h3>
+  <p>
+    Raw stdout/stderr from tools is parsed by specialized extractors that understand common output formats: Jest/Vitest test reports, ESLint/Pylint warnings, TypeScript compiler errors, Docker build logs, and more. This transforms noisy terminal output into structured data the LLM can reason about efficiently — reducing token waste and improving fix accuracy.
+  </p>
+
+  <h3>6.4 Resource Limits &amp; Sandboxing</h3>
+  <p>
+    Every tool execution runs inside the sandbox with hard limits: maximum CPU time (configurable, default 5 minutes per command), memory cap (2GB), disk quota (10GB), and network restrictions. Long-running processes are monitored and killed if they exceed limits. The agent receives a structured timeout error and can decide to retry with different parameters or escalate.
+  </p>
+</section>
+
+<!-- ═══ 7 ═══ -->
+<section id="agent-loop">
+  <h2>7. Core Agent Loop &amp; State Machine</h2>
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 900 440" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px;display:block;margin:0 auto">
+      <defs>
+        <marker id="a2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#6c8cff"/></marker>
+        <marker id="a3" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#ef4444"/></marker>
+        <marker id="a4" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#34d399"/></marker>
+      </defs>
+      <rect x="30" y="180" width="110" height="44" rx="22" fill="#232736" stroke="#6c8cff" stroke-width="2"/>
+      <text x="85" y="207" fill="#e2e4ed" font-size="12" text-anchor="middle" font-weight="600">RECEIVED</text>
+      <rect x="180" y="180" width="110" height="44" rx="22" fill="#232736" stroke="#34d399" stroke-width="2"/>
+      <text x="235" y="207" fill="#e2e4ed" font-size="12" text-anchor="middle" font-weight="600">ANALYZING</text>
+      <rect x="330" y="180" width="110" height="44" rx="22" fill="#232736" stroke="#34d399" stroke-width="2"/>
+      <text x="385" y="207" fill="#e2e4ed" font-size="12" text-anchor="middle" font-weight="600">PLANNING</text>
+      <rect x="480" y="180" width="110" height="44" rx="22" fill="#232736" stroke="#a78bfa" stroke-width="2"/>
+      <text x="535" y="207" fill="#e2e4ed" font-size="12" text-anchor="middle" font-weight="600">CODING</text>
+      <rect x="630" y="180" width="110" height="44" rx="22" fill="#232736" stroke="#a78bfa" stroke-width="2"/>
+      <text x="685" y="207" fill="#e2e4ed" font-size="12" text-anchor="middle" font-weight="600">REVIEWING</text>
+      <rect x="780" y="180" width="100" height="44" rx="22" fill="#232736" stroke="#f59e0b" stroke-width="2"/>
+      <text x="830" y="207" fill="#e2e4ed" font-size="12" text-anchor="middle" font-weight="600">TESTING</text>
+      <rect x="630" y="300" width="110" height="44" rx="22" fill="#232736" stroke="#f59e0b" stroke-width="2"/>
+      <text x="685" y="327" fill="#e2e4ed" font-size="12" text-anchor="middle" font-weight="600">DEPLOYING</text>
+      <rect x="480" y="300" width="110" height="44" rx="22" fill="#232736" stroke="#f59e0b" stroke-width="2"/>
+      <text x="535" y="327" fill="#e2e4ed" font-size="12" text-anchor="middle" font-weight="600">VERIFYING</text>
+      <rect x="280" y="300" width="110" height="44" rx="22" fill="#232736" stroke="#34d399" stroke-width="2.5"/>
+      <text x="335" y="327" fill="#34d399" font-size="12" text-anchor="middle" font-weight="700">DONE</text>
+      <rect x="100" y="300" width="110" height="44" rx="22" fill="#232736" stroke="#ef4444" stroke-width="2"/>
+      <text x="155" y="327" fill="#ef4444" font-size="12" text-anchor="middle" font-weight="700">FAILED</text>
+      <line x1="140" y1="202" x2="178" y2="202" stroke="#6c8cff" stroke-width="1.5" marker-end="url(#a2)"/>
+      <line x1="290" y1="202" x2="328" y2="202" stroke="#6c8cff" stroke-width="1.5" marker-end="url(#a2)"/>
+      <line x1="440" y1="202" x2="478" y2="202" stroke="#6c8cff" stroke-width="1.5" marker-end="url(#a2)"/>
+      <line x1="590" y1="202" x2="628" y2="202" stroke="#6c8cff" stroke-width="1.5" marker-end="url(#a2)"/>
+      <line x1="740" y1="202" x2="778" y2="202" stroke="#6c8cff" stroke-width="1.5" marker-end="url(#a2)"/>
+      <line x1="830" y1="224" x2="830" y2="270" stroke="#6c8cff" stroke-width="1.5"/>
+      <line x1="830" y1="270" x2="742" y2="300" stroke="#6c8cff" stroke-width="1.5" marker-end="url(#a2)"/>
+      <line x1="630" y1="322" x2="592" y2="322" stroke="#6c8cff" stroke-width="1.5" marker-end="url(#a2)"/>
+      <line x1="480" y1="322" x2="392" y2="322" stroke="#34d399" stroke-width="1.5" marker-end="url(#a4)"/>
+      <text x="436" y="315" fill="#34d399" font-size="10" text-anchor="middle">pass</text>
+      <path d="M 830 224 C 830 260, 600 260, 535 224" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#a3)"/>
+      <text x="700" y="255" fill="#ef4444" font-size="10" text-anchor="middle">test fail</text>
+      <path d="M 660 224 C 660 250, 570 250, 560 224" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#a3)"/>
+      <text x="615" y="248" fill="#ef4444" font-size="10" text-anchor="middle">issues</text>
+      <path d="M 535 300 C 535 268, 535 250, 535 224" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#a3)"/>
+      <text x="550" y="268" fill="#ef4444" font-size="10">verify fail</text>
+      <path d="M 480 210 C 380 240, 260 260, 190 300" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#a3)"/>
+      <text x="300" y="260" fill="#ef4444" font-size="10" text-anchor="middle">max retries</text>
+      <rect x="30" y="380" width="860" height="50" rx="8" fill="#1a1d27" stroke="#2e3348"/>
+      <line x1="60" y1="405" x2="100" y2="405" stroke="#6c8cff" stroke-width="2"/>
+      <text x="110" y="409" fill="#8b8fa7" font-size="11">Forward progress</text>
+      <line x1="260" y1="405" x2="300" y2="405" stroke="#ef4444" stroke-width="2" stroke-dasharray="4,3"/>
+      <text x="310" y="409" fill="#8b8fa7" font-size="11">Retry / rollback on failure</text>
+      <line x1="530" y1="405" x2="570" y2="405" stroke="#34d399" stroke-width="2"/>
+      <text x="580" y="409" fill="#8b8fa7" font-size="11">Success path</text>
+    </svg>
+    <div class="caption">Figure 2 — State machine for story processing. Failures trigger retries back to the CODING state. Max retries exhausted &rarr; FAILED.</div>
+  </div>
+
+  <h3>7.1 Iteration Behavior</h3>
+  <p>
+    The core loop follows a <strong>generate &rarr; validate &rarr; fix</strong> cycle, consistent with the <strong>ReAct</strong> (Reasoning + Acting) pattern which interleaves reasoning and actions with observations. ReAct motivates this interleaving specifically because observations from tools help reduce hallucination and update plans dynamically. When a test fails or the reviewer flags issues, the orchestrator packages the error context (stack traces, reviewer comments, failing test output) and sends it back to the Code Generator along with the original task. This retry includes progressively more context with each attempt — on the first retry, just the error; by the third retry, all previous attempts and their failure modes.
+  </p>
+
+  <h3>7.2 Convergence Strategy</h3>
+  <p>
+    To prevent infinite loops, the agent uses several convergence mechanisms: a hard maximum iteration count per story (configurable, default 10), a diminishing-returns detector that flags when fixes are oscillating, and an escalation path that can request human intervention or decompose the story into smaller sub-stories.
+  </p>
+
+  <h3>7.3 Tiered Autonomy: Agentless vs. Fully Agentic</h3>
+  <p>
+    Research such as the <strong>Agentless</strong> approach argues for a simpler three-phase pipeline (localise &rarr; repair &rarr; validate) rather than complex autonomous tool-using loops, demonstrating that <em>reducing degrees of freedom</em> can improve reliability. This system combines both insights using <strong>tiered autonomy</strong>: deterministic cores handle safety-critical steps (dependency graphing, static checks, build execution, test running, deployment procedures, policy enforcement — no LLM discretion), while LLM discretion is reserved for where creativity and synthesis matter (requirement interpretation, design alternatives, patch proposals, test drafting, log triage).
+  </p>
+</section>
+
+<!-- ═══ 8 ═══ -->
+<section id="context-mgmt">
+  <h2>8. Context Management Strategy</h2>
+  <p>
+    The single biggest technical challenge for an autonomous coding agent is context management. Real projects have thousands of files, but LLM context windows are finite. The agent must intelligently select what context to include in each prompt to maximize code quality while staying within token budgets.
+  </p>
+
+  <h3>8.1 Hierarchical Context Architecture</h3>
+  <p>
+    Context is organized in layers, from always-present global context to dynamically-loaded file-level detail:
+  </p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Layer</th><th>Contents</th><th>Token Budget</th><th>Lifetime</th></tr></thead>
+    <tbody>
+      <tr><td><strong>System Layer</strong></td><td>Agent instructions, tool definitions, output format specs</td><td>~2,000</td><td>Always present</td></tr>
+      <tr><td><strong>Project Layer</strong></td><td>ProjectProfile, directory tree summary, key conventions, tech stack</td><td>~1,500</td><td>Per-project, refreshed on changes</td></tr>
+      <tr><td><strong>Story Layer</strong></td><td>Current user story, acceptance criteria, execution plan, previous iteration outcomes</td><td>~2,000</td><td>Per-story</td></tr>
+      <tr><td><strong>Task Layer</strong></td><td>Current task description, target file(s), relevant imports/dependencies</td><td>~1,000</td><td>Per-task</td></tr>
+      <tr><td><strong>Code Layer</strong></td><td>Full content of target files, referenced files, type definitions</td><td>~8,000-20,000</td><td>Dynamic per-task</td></tr>
+      <tr><td><strong>Error Layer</strong></td><td>Previous attempt code, error messages, stack traces (on retries only)</td><td>~3,000</td><td>Per-retry</td></tr>
+      <tr><td><strong>Memory Layer</strong></td><td>RAG-retrieved lessons from past stories (patterns, anti-patterns, fixes)</td><td>~1,500</td><td>Dynamic, relevance-scored</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>8.2 Smart File Selection</h3>
+  <p>
+    When generating or modifying code, the agent must decide which files to include in context. The selection algorithm uses multiple signals:
+  </p>
+  <ul>
+    <li><strong>Direct dependencies:</strong> Files imported by the target file (always included)</li>
+    <li><strong>Type definitions:</strong> Interfaces, types, and schemas referenced by the task (always included)</li>
+    <li><strong>Sibling patterns:</strong> Similar files in the same directory that demonstrate the project's patterns (included for new file creation)</li>
+    <li><strong>Semantic relevance:</strong> Files returned by vector search for the task description (top-k, with relevance threshold)</li>
+    <li><strong>Recency:</strong> Files modified in the current story get a boost (they contain the agent's own recent changes)</li>
+    <li><strong>Usage frequency:</strong> Frequently-imported utility files and shared types are prioritized</li>
+  </ul>
+
+  <h3>8.3 Context Compression Techniques</h3>
+  <ul>
+    <li><strong>Skeleton extraction:</strong> For large files, include only function/class signatures with docstrings, omitting implementation bodies unless directly relevant</li>
+    <li><strong>Diff-only context:</strong> On retries, include only the diff of previous changes plus error output, not the full file again</li>
+    <li><strong>Type-only imports:</strong> For dependency files, include only the type signatures the target file actually uses</li>
+    <li><strong>Summary substitution:</strong> For very large modules, replace the full source with a generated summary of its API surface</li>
+  </ul>
+
+  <h3>8.4 Context Window Overflow Handling</h3>
+  <p>
+    When the selected context exceeds the model's token limit, the agent applies a priority-based eviction strategy: Memory Layer items are evicted first (lowest relevance score), then semantic search results, then sibling patterns. Direct dependencies and the target file are never evicted. If the task still doesn't fit, the Planner is asked to decompose it into smaller sub-tasks that each operate on fewer files.
+  </p>
+</section>
+
+<!-- ═══ 9 ═══ -->
+<section id="error-taxonomy">
+  <h2>9. Error Taxonomy &amp; Recovery Strategies</h2>
+  <p>
+    An autonomous agent encounters many kinds of errors. Treating them all the same ("retry and hope") leads to wasted iterations and poor convergence. The Error Taxonomy classifies errors and maps each type to a specific recovery strategy.
+  </p>
+
+  <h3>9.1 Error Classification</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Category</th><th>Examples</th><th>Recovery Strategy</th><th>Typical Fix Attempts</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Syntax Errors</strong></td>
+        <td>Parse failures, missing brackets, invalid syntax</td>
+        <td>Direct fix — usually a single-line correction. Include the exact error location and message.</td>
+        <td>1</td>
+      </tr>
+      <tr>
+        <td><strong>Type Errors</strong></td>
+        <td>Type mismatches, missing properties, wrong argument types</td>
+        <td>Include the full type definitions involved. The agent often needs to see both the caller and callee types.</td>
+        <td>1-2</td>
+      </tr>
+      <tr>
+        <td><strong>Import / Resolution Errors</strong></td>
+        <td>Module not found, missing exports, circular dependencies</td>
+        <td>Consult the Symbol Table and Dependency Graph. May require creating missing modules or fixing export paths.</td>
+        <td>1-2</td>
+      </tr>
+      <tr>
+        <td><strong>Logic Errors</strong></td>
+        <td>Tests fail with wrong output, unexpected behavior</td>
+        <td>Hardest to fix. Include test expectations, actual output, and the algorithm description. May require plan revision.</td>
+        <td>2-4</td>
+      </tr>
+      <tr>
+        <td><strong>Integration Errors</strong></td>
+        <td>API contract mismatches, database schema issues, env config missing</td>
+        <td>Load broader context: API specs, schema definitions, environment configuration. May need multiple file changes.</td>
+        <td>2-3</td>
+      </tr>
+      <tr>
+        <td><strong>Environment Errors</strong></td>
+        <td>Missing packages, wrong runtime version, disk full, permission denied</td>
+        <td>Execute environment repair commands (install packages, update configs). Do not retry code generation — the code is fine.</td>
+        <td>1</td>
+      </tr>
+      <tr>
+        <td><strong>Flaky / Non-Deterministic</strong></td>
+        <td>Race conditions, timing-dependent tests, random seed issues</td>
+        <td>Re-run the same code up to 3 times before considering a code fix. Flag for human review if consistently flaky.</td>
+        <td>0 (re-run)</td>
+      </tr>
+      <tr>
+        <td><strong>Architectural Errors</strong></td>
+        <td>Fundamental design flaw, wrong abstraction, circular coupling</td>
+        <td>Escalate to Planner for a revised execution plan. Do not patch — redesign.</td>
+        <td>N/A (replan)</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>9.2 Error Fingerprinting</h3>
+  <p>
+    The agent maintains a <strong>fingerprint database</strong> of errors it has seen before. Each error is hashed by its type, message pattern (with dynamic values stripped), and file location. When a previously-seen fingerprint recurs, the agent can immediately apply the known fix pattern from its Memory Store — skipping the expensive "reason about the error from scratch" step. This dramatically improves fix speed for common issues like missing null checks, wrong import paths, or uncaught promise rejections.
+  </p>
+
+  <h3>9.3 Oscillation Detection</h3>
+  <p>
+    A critical failure mode is when the agent's fix for Error A introduces Error B, and its fix for Error B reintroduces Error A. The orchestrator detects this by tracking a rolling window of error fingerprints. If the same fingerprint appears twice within 4 iterations, the agent is flagged as "oscillating" and the recovery strategy escalates: the agent is prompted with <em>all</em> previous attempts and their errors simultaneously, forcing it to find a solution that addresses all constraints at once. If oscillation persists, the story is decomposed or escalated to a human.
+  </p>
+
+  <h3>9.4 Progressive Context Enrichment</h3>
+  <p>
+    Each retry attempt includes more context than the previous one, following a progressive enrichment schedule:
+  </p>
+  <ul>
+    <li><strong>Attempt 1:</strong> Standard context + error message</li>
+    <li><strong>Attempt 2:</strong> + Full stack trace + the failing test source code</li>
+    <li><strong>Attempt 3:</strong> + All previous code attempts + a diff showing what changed each time</li>
+    <li><strong>Attempt 4:</strong> + Broader project context (related modules, test fixtures) + Memory Store patterns</li>
+    <li><strong>Attempt 5:</strong> Switch to a more capable (top-tier) model with maximum context</li>
+  </ul>
+</section>
+
+<!-- ═══ 10 ═══ -->
+<section id="data-model">
+  <h2>10. Data Model</h2>
+
+  <h3>10.1 Core Entities</h3>
+  <pre><code>// ── Story ──
+interface Story {
+  id: string;                      // e.g., "STORY-142"
+  raw_text: string;                // Original user story text
+  spec: StorySpec;                 // Parsed structured specification
+  plan: ExecutionPlan;             // Generated implementation plan
+  state: StoryState;               // Current state in the FSM
+  iterations: Iteration[];         // History of all attempts
+  metadata: {
+    created_at: DateTime;
+    completed_at?: DateTime;
+    total_tokens_used: number;
+    total_cost_usd: number;
+    model_usage: Record&lt;string, number&gt;;
+  };
+}
+
+// ── StorySpec ──
+interface StorySpec {
+  title: string;
+  description: string;
+  acceptance_criteria: AcceptanceCriterion[];
+  story_type: "feature" | "bugfix" | "refactor" | "infra";
+  complexity_score: number;        // 1-10
+  dependencies: FileDependency[];
+  ambiguities: string[];           // Items needing clarification
+}
+
+// ── ExecutionPlan ──
+interface ExecutionPlan {
+  tasks: Task[];
+  testing_strategy: TestingStrategy;
+  deploy_strategy: DeployStrategy;
+  estimated_total_tokens: number;
+}
+
+// ── Task ──
+interface Task {
+  id: string;
+  action: "create_file" | "modify_file" | "delete_file" | "run_command";
+  target: string;                  // File path or command
+  description: string;
+  depends_on: string[];            // Task IDs
+  status: "pending" | "in_progress" | "done" | "failed";
+  result?: TaskResult;
+}
+
+// ── Iteration ──
+interface Iteration {
+  number: number;
+  started_at: DateTime;
+  ended_at: DateTime;
+  stage: StoryState;
+  changes: FileChange[];           // Diffs applied
+  test_results?: TestReport;
+  review_results?: ReviewReport;
+  deploy_results?: DeployReport;
+  error_context?: ErrorContext;    // If this iteration was a retry
+  model_calls: ModelCall[];
+}
+
+// ── ModelCall ──
+interface ModelCall {
+  id: string;
+  model: string;                   // e.g., "claude-sonnet-4-6"
+  provider: string;                // e.g., "anthropic"
+  purpose: string;                 // e.g., "code_generation", "review"
+  input_tokens: number;
+  output_tokens: number;
+  latency_ms: number;
+  cost_usd: number;
+}</code></pre>
+
+  <h3>10.2 Memory Store Schema</h3>
+  <pre><code>// ── MemoryEntry ── (for RAG-based self-improvement)
+interface MemoryEntry {
+  id: string;
+  type: "pattern" | "error_fix" | "convention" | "anti_pattern";
+  context: string;                 // When does this apply?
+  content: string;                 // The actual lesson/pattern
+  source_story_id: string;
+  effectiveness_score: number;     // How often this helped (0-1)
+  embedding: float[];              // Vector embedding for retrieval
+  created_at: DateTime;
+  last_used_at: DateTime;
+  use_count: number;
+}</code></pre>
+</section>
+
+<!-- ═══ 7 ═══ -->
+<section id="api">
+  <h2>11. API Specifications</h2>
+
+  <h3>11.1 Story Submission</h3>
+  <pre><code>POST /api/v1/stories
+
+Request Body:
+{
+  "story": "As a user, I want to reset my password via email...",
+  "project_id": "proj-abc",
+  "priority": "high",
+  "constraints": {
+    "max_iterations": 8,
+    "approval_gates": ["pre_deploy"],
+    "target_branch": "feature/password-reset",
+    "deploy_target": "staging"
+  }
+}
+
+Response (202 Accepted):
+{
+  "story_id": "STORY-142",
+  "status": "RECEIVED",
+  "estimated_completion": "2026-03-26T15:30:00Z",
+  "tracking_url": "/api/v1/stories/STORY-142"
+}</code></pre>
+
+  <h3>11.2 Story Status</h3>
+  <pre><code>GET /api/v1/stories/{story_id}
+
+Response:
+{
+  "story_id": "STORY-142",
+  "state": "TESTING",
+  "current_iteration": 2,
+  "plan_summary": "3 tasks: create payment service, add route, write tests",
+  "progress": {
+    "tasks_completed": 2,
+    "tasks_total": 3,
+    "tests_passing": 12,
+    "tests_failing": 1,
+    "coverage_percent": 87.3
+  },
+  "timeline": [
+    { "state": "RECEIVED",  "at": "2026-03-26T14:00:00Z" },
+    { "state": "ANALYZING", "at": "2026-03-26T14:00:05Z" },
+    { "state": "PLANNING",  "at": "2026-03-26T14:00:18Z" },
+    { "state": "CODING",    "at": "2026-03-26T14:00:35Z" },
+    { "state": "REVIEWING", "at": "2026-03-26T14:02:10Z" },
+    { "state": "TESTING",   "at": "2026-03-26T14:02:45Z" }
+  ],
+  "cost_so_far_usd": 0.42
+}</code></pre>
+
+  <h3>11.3 Approval Gate</h3>
+  <pre><code>POST /api/v1/stories/{story_id}/approve
+
+Request Body:
+{
+  "gate": "pre_deploy",
+  "decision": "approved",
+  "comment": "Looks good. Deploy to staging."
+}
+
+Response (200 OK):
+{
+  "story_id": "STORY-142",
+  "state": "DEPLOYING",
+  "message": "Approval accepted. Deployment initiated."
+}</code></pre>
+
+  <h3>11.4 Batch Submission</h3>
+  <pre><code>POST /api/v1/stories/batch
+
+Request Body:
+{
+  "project_id": "proj-abc",
+  "stories": [
+    { "story": "As a user, I want to ...", "priority": "high" },
+    { "story": "As an admin, I want to ...", "priority": "medium" }
+  ],
+  "execution_mode": "parallel"
+}</code></pre>
+</section>
+
+<!-- ═══ 8 ═══ -->
+<section id="llm">
+  <h2>12. LLM Integration Layer</h2>
+
+  <h3>12.1 Architecture</h3>
+  <p>
+    The LLM layer is abstracted behind a <strong>Model Router</strong> that selects the optimal model for each task based on configurable routing rules. This allows the system to use different models for different purposes — e.g., a fast, cheap model for simple code edits and a powerful model for complex architectural decisions.
+  </p>
+  <div class="callout">
+    <strong>Common Tool-Calling Contract:</strong> LLM-agnostic execution is easiest when the system standardises on a tool-calling contract: (1) provide the model a list of tools with schemas and policies, (2) accept a structured call from the model, (3) execute it in the application/runtime, (4) return tool outputs as observations, (5) repeat until the model returns a final result. Agent actions are expressed as a stable internal <strong>Intermediate Representation (IR)</strong>, and each model provider adapter maps provider-specific calls to/from that IR — keeping the orchestration layer constant even when switching between hosted frontier models and self-hosted open-source models.
+  </div>
+
+  <div class="diagram-wrap">
+    <div class="arch-grid">
+      <div class="arch-box arch-full highlight">
+        <div class="label">Model Router</div>
+        <div class="desc">Routes tasks to optimal models based on task type, complexity, cost budget, and latency requirements</div>
+      </div>
+      <div class="arch-box">
+        <div class="icon">&#x1F7E3;</div>
+        <div class="label">Anthropic Adapter</div>
+        <div class="desc">Claude Opus, Sonnet, Haiku</div>
+      </div>
+      <div class="arch-box">
+        <div class="icon">&#x1F7E2;</div>
+        <div class="label">OpenAI Adapter</div>
+        <div class="desc">GPT-4o, o1, o3</div>
+      </div>
+      <div class="arch-box">
+        <div class="icon">&#x1F535;</div>
+        <div class="label">Open-Source Adapter</div>
+        <div class="desc">Llama, Mistral, DeepSeek, CodeLlama</div>
+      </div>
+    </div>
+  </div>
+
+  <h3>12.2 Routing Rules</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Task Type</th><th>Recommended Tier</th><th>Rationale</th></tr></thead>
+    <tbody>
+      <tr><td>Story Analysis</td><td>Mid-tier (Sonnet / GPT-4o)</td><td>Requires good reasoning but not peak coding ability</td></tr>
+      <tr><td>Architectural Planning</td><td>Top-tier (Opus / o3)</td><td>Complex multi-step reasoning about system structure</td></tr>
+      <tr><td>Code Generation</td><td>Top-tier for complex, Mid for simple</td><td>Complexity score from analyzer determines routing</td></tr>
+      <tr><td>Test Generation</td><td>Mid-tier</td><td>Tests follow predictable patterns; mid-tier is cost-effective</td></tr>
+      <tr><td>Code Review</td><td>Top-tier (different provider than generator)</td><td>Independent perspective catches more issues</td></tr>
+      <tr><td>Error Analysis &amp; Fix</td><td>Top-tier</td><td>Debugging requires strong reasoning and context retention</td></tr>
+      <tr><td>Commit Messages / Docs</td><td>Low-tier (Haiku / small model)</td><td>Straightforward text generation</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>12.3 Provider Interface</h3>
+  <pre><code>interface LLMProvider {
+  name: string;
+
+  complete(request: CompletionRequest): Promise&lt;CompletionResponse&gt;;
+  stream(request: CompletionRequest): AsyncIterator&lt;StreamChunk&gt;;
+  healthCheck(): Promise&lt;HealthStatus&gt;;
+  getUsage(): Promise&lt;UsageMetrics&gt;;
+}
+
+interface CompletionRequest {
+  model: string;
+  messages: Message[];
+  tools?: ToolDefinition[];
+  max_tokens: number;
+  temperature: number;
+  system_prompt?: string;
+  metadata: {
+    story_id: string;
+    task_id: string;
+    purpose: string;
+    attempt: number;
+  };
+}
+
+interface ModelRouter {
+  route(task: RoutingContext): SelectedModel;
+  fallback(failed_model: string, task: RoutingContext): SelectedModel;
+  experiment(task: RoutingContext, models: [string, string]): ExperimentResult;
+}</code></pre>
+
+  <h3>12.4 Cost Management</h3>
+  <p>
+    Each story has a configurable cost budget (default: $5.00). The orchestrator tracks cumulative token usage and cost across all model calls. When 80% of the budget is consumed, the router switches to cheaper models. At 100%, the story is paused and escalated for human decision (continue with more budget, or mark as failed).
+  </p>
+</section>
+
+<!-- ═══ 9 ═══ -->
+<section id="sequence">
+  <h2>13. Sequence Diagrams</h2>
+
+  <h3>13.1 Happy Path — Story to Deployed Feature</h3>
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 880 560" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:880px;display:block;margin:0 auto">
+      <rect x="30" y="10" width="80" height="36" rx="6" fill="#232736" stroke="#6c8cff"/>
+      <text x="70" y="33" fill="#e2e4ed" font-size="11" text-anchor="middle" font-weight="600">User</text>
+      <line x1="70" y1="46" x2="70" y2="540" stroke="#2e3348" stroke-width="1" stroke-dasharray="4,4"/>
+      <rect x="170" y="10" width="100" height="36" rx="6" fill="#232736" stroke="#a78bfa"/>
+      <text x="220" y="33" fill="#e2e4ed" font-size="11" text-anchor="middle" font-weight="600">Orchestrator</text>
+      <line x1="220" y1="46" x2="220" y2="540" stroke="#2e3348" stroke-width="1" stroke-dasharray="4,4"/>
+      <rect x="330" y="10" width="100" height="36" rx="6" fill="#232736" stroke="#34d399"/>
+      <text x="380" y="33" fill="#e2e4ed" font-size="11" text-anchor="middle" font-weight="600">Analyzer</text>
+      <line x1="380" y1="46" x2="380" y2="540" stroke="#2e3348" stroke-width="1" stroke-dasharray="4,4"/>
+      <rect x="480" y="10" width="100" height="36" rx="6" fill="#232736" stroke="#34d399"/>
+      <text x="530" y="33" fill="#e2e4ed" font-size="11" text-anchor="middle" font-weight="600">LLM Router</text>
+      <line x1="530" y1="46" x2="530" y2="540" stroke="#2e3348" stroke-width="1" stroke-dasharray="4,4"/>
+      <rect x="630" y="10" width="100" height="36" rx="6" fill="#232736" stroke="#f59e0b"/>
+      <text x="680" y="33" fill="#e2e4ed" font-size="11" text-anchor="middle" font-weight="600">Sandbox</text>
+      <line x1="680" y1="46" x2="680" y2="540" stroke="#2e3348" stroke-width="1" stroke-dasharray="4,4"/>
+      <rect x="780" y="10" width="80" height="36" rx="6" fill="#232736" stroke="#f59e0b"/>
+      <text x="820" y="33" fill="#e2e4ed" font-size="11" text-anchor="middle" font-weight="600">Deploy</text>
+      <line x1="820" y1="46" x2="820" y2="540" stroke="#2e3348" stroke-width="1" stroke-dasharray="4,4"/>
+      <line x1="70" y1="80" x2="218" y2="80" stroke="#6c8cff" stroke-width="1.5" marker-end="url(#a2)"/>
+      <text x="145" y="74" fill="#8b8fa7" font-size="10" text-anchor="middle">Submit Story</text>
+      <line x1="220" y1="110" x2="378" y2="110" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#a2)"/>
+      <text x="300" y="104" fill="#8b8fa7" font-size="10" text-anchor="middle">Analyze(story)</text>
+      <line x1="380" y1="140" x2="528" y2="140" stroke="#34d399" stroke-width="1.5" marker-end="url(#a2)"/>
+      <text x="455" y="134" fill="#8b8fa7" font-size="10" text-anchor="middle">Route &rarr; mid-tier</text>
+      <line x1="528" y1="165" x2="382" y2="165" stroke="#34d399" stroke-width="1.5" marker-end="url(#a2)"/>
+      <text x="455" y="160" fill="#8b8fa7" font-size="10" text-anchor="middle">StorySpec</text>
+      <line x1="378" y1="190" x2="222" y2="190" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#a2)"/>
+      <text x="300" y="184" fill="#8b8fa7" font-size="10" text-anchor="middle">spec + plan</text>
+      <line x1="220" y1="220" x2="528" y2="220" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#a2)"/>
+      <text x="375" y="214" fill="#8b8fa7" font-size="10" text-anchor="middle">Generate code &rarr; top-tier</text>
+      <line x1="528" y1="250" x2="222" y2="250" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#a2)"/>
+      <text x="375" y="244" fill="#8b8fa7" font-size="10" text-anchor="middle">code + tests</text>
+      <line x1="220" y1="280" x2="528" y2="280" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#a2)"/>
+      <text x="375" y="274" fill="#8b8fa7" font-size="10" text-anchor="middle">Review code &rarr; top-tier (alt)</text>
+      <line x1="528" y1="310" x2="222" y2="310" stroke="#34d399" stroke-width="1.5" marker-end="url(#a2)"/>
+      <text x="375" y="304" fill="#34d399" font-size="10" text-anchor="middle">APPROVED</text>
+      <line x1="220" y1="340" x2="678" y2="340" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#a2)"/>
+      <text x="450" y="334" fill="#8b8fa7" font-size="10" text-anchor="middle">Build + Run Tests</text>
+      <line x1="678" y1="370" x2="222" y2="370" stroke="#34d399" stroke-width="1.5" marker-end="url(#a2)"/>
+      <text x="450" y="364" fill="#34d399" font-size="10" text-anchor="middle">All tests pass</text>
+      <line x1="220" y1="400" x2="70" y2="400" stroke="#6c8cff" stroke-width="1.5" marker-end="url(#a2)"/>
+      <text x="145" y="394" fill="#8b8fa7" font-size="10" text-anchor="middle">Approval gate</text>
+      <line x1="70" y1="430" x2="218" y2="430" stroke="#34d399" stroke-width="1.5" marker-end="url(#a2)"/>
+      <text x="145" y="424" fill="#34d399" font-size="10" text-anchor="middle">Approved</text>
+      <line x1="220" y1="460" x2="818" y2="460" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#a2)"/>
+      <text x="520" y="454" fill="#8b8fa7" font-size="10" text-anchor="middle">Deploy to staging</text>
+      <line x1="818" y1="490" x2="222" y2="490" stroke="#34d399" stroke-width="1.5" marker-end="url(#a2)"/>
+      <text x="520" y="484" fill="#34d399" font-size="10" text-anchor="middle">Healthy — Smoke tests pass</text>
+      <line x1="220" y1="520" x2="72" y2="520" stroke="#34d399" stroke-width="2" marker-end="url(#a4)"/>
+      <text x="145" y="514" fill="#34d399" font-size="10" text-anchor="middle" font-weight="600">STORY COMPLETE</text>
+    </svg>
+    <div class="caption">Figure 3 — Sequence diagram showing the happy path from story submission to successful deployment.</div>
+  </div>
+
+  <h3>13.2 Retry Path — Test Failure</h3>
+  <p>
+    When tests fail, the orchestrator packages the test output (failing test names, stack traces, expected vs. actual values) and sends it back to the Code Generator as additional context. The generator receives the original task description, the code it previously generated, and the structured error — allowing it to produce a targeted fix rather than regenerating from scratch.
+  </p>
+  <pre><code>// Error context sent to LLM on retry
+{
+  "retry_context": {
+    "attempt": 2,
+    "previous_code": "... (the code that failed) ...",
+    "error": {
+      "type": "test_failure",
+      "failing_tests": [
+        {
+          "name": "PaymentProcessor.processPayment should handle declined cards",
+          "expected": "throws DeclinedCardError",
+          "actual": "throws generic Error('Payment failed')",
+          "stack_trace": "..."
+        }
+      ]
+    },
+    "instruction": "Fix the code to throw DeclinedCardError instead of generic Error for declined cards."
+  }
+}</code></pre>
+</section>
+
+<!-- ═══ 14 ═══ -->
+<section id="git-workflow">
+  <h2>14. Git &amp; Source Control Workflow</h2>
+  <p>
+    An autonomous agent that writes code must also be a disciplined git user. The Git Workflow defines how the agent manages branches, commits, pull requests, and code review — ensuring its changes are traceable, reversible, and integrate cleanly with team workflows.
+  </p>
+
+  <h3>14.1 Branching Strategy</h3>
+  <pre><code>// Branch naming convention
+feature/STORY-{id}/{short-description}
+// Examples:
+feature/STORY-142/password-reset-email
+feature/STORY-203/add-payment-webhook
+fix/STORY-187/null-check-user-profile</code></pre>
+  <p>
+    The agent creates a fresh branch from the target base branch for each story. All changes happen on this feature branch. The agent never commits directly to <code>main</code> or <code>develop</code>.
+  </p>
+
+  <h3>14.2 Commit Discipline</h3>
+  <p>
+    The agent follows an atomic commit strategy — each commit represents one logical change. Commits are made after each successful sub-task completion (not after each file change). The commit message follows the project's convention (detected by the Convention Profile) or defaults to Conventional Commits format:
+  </p>
+  <pre><code>feat(payments): add PaymentProcessor service with Stripe integration
+
+- Implement charge, refund, and webhook handling
+- Add error types for declined cards and insufficient funds
+- Wire up to /api/checkout endpoint
+
+Story: STORY-142 | Task: task-1 | Agent: auto-dev-v2</code></pre>
+
+  <h3>14.3 Pull Request Automation</h3>
+  <p>
+    When all tasks for a story are complete and tests pass, the agent creates a pull request with:
+  </p>
+  <ul>
+    <li><strong>Title:</strong> Derived from the story title</li>
+    <li><strong>Description:</strong> Summary of changes, files modified, acceptance criteria addressed</li>
+    <li><strong>Test report:</strong> Coverage metrics, test results summary</li>
+    <li><strong>Iteration report:</strong> Number of attempts, errors encountered and fixed, total cost</li>
+    <li><strong>Labels:</strong> Auto-applied based on story type (feature, bugfix, refactor)</li>
+    <li><strong>Reviewers:</strong> Assigned based on CODEOWNERS or project configuration</li>
+  </ul>
+
+  <h3>14.4 Merge Conflict Resolution</h3>
+  <p>
+    If the target branch has advanced since the agent started, it rebases its feature branch before creating the PR. For simple conflicts (non-overlapping changes), the agent resolves them automatically. For semantic conflicts (overlapping logic), the agent attempts resolution using both versions as context, runs the full test suite to verify, and flags any uncertain merges in the PR description for human review.
+  </p>
+</section>
+
+<!-- ═══ 15 ═══ -->
+<section id="multi-agent">
+  <h2>15. Multi-Agent Collaboration</h2>
+  <p>
+    Complex projects benefit from multiple specialized agents working together. The Multi-Agent layer defines how agents coordinate, share context, avoid conflicts, and review each other's work.
+  </p>
+
+  <h3>15.1 Agent Roles</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Role</th><th>Specialization</th><th>When Used</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Architect Agent</strong></td><td>System design, API contracts, schema design, dependency management</td><td>New features that span multiple services or introduce new abstractions</td></tr>
+      <tr><td><strong>Implementer Agent</strong></td><td>Code generation, test writing, bug fixing for a specific module</td><td>Most stories — the primary workhorse</td></tr>
+      <tr><td><strong>Reviewer Agent</strong></td><td>Code review, security audit, performance analysis</td><td>After implementation, before merge — uses a different LLM provider for independence</td></tr>
+      <tr><td><strong>DevOps Agent</strong></td><td>CI/CD configuration, Docker/K8s manifests, infrastructure-as-code</td><td>Stories that require infra changes or deployment pipeline updates</td></tr>
+      <tr><td><strong>Documentation Agent</strong></td><td>API docs, README updates, changelog entries, architecture decision records</td><td>Runs in parallel after implementation is stable</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>15.2 Coordination Protocol</h3>
+  <p>
+    When multiple agents work on the same codebase, a <strong>Coordination Manager</strong> prevents conflicts:
+  </p>
+  <ul>
+    <li><strong>File locking:</strong> Agents acquire advisory locks on files they intend to modify. If two agents need the same file, the higher-priority story goes first; the other waits or works on non-conflicting tasks.</li>
+    <li><strong>Shared context bus:</strong> Agents publish their changes (file diffs, new exports, API changes) to a shared event bus. Other agents subscribe to changes in their dependency scope and update their local context accordingly.</li>
+    <li><strong>Contract-first interfaces:</strong> When the Architect Agent defines an API contract (interface, schema), Implementer Agents code against the contract independently without needing to see each other's implementations.</li>
+    <li><strong>Sequential merge queue:</strong> PRs are merged one at a time through a queue that runs the full test suite after each merge. If a merge causes test failures, it's reverted and the agent is notified to fix the conflict.</li>
+  </ul>
+
+  <h3>15.3 Agent-to-Agent Review</h3>
+  <p>
+    The Reviewer Agent operates on a different LLM provider than the Implementer Agent to ensure independent judgment. It receives the full PR diff, the story specification, and the project's coding standards. It produces structured feedback categorized as: <code>blocking</code> (must fix before merge), <code>suggestion</code> (recommended improvement), or <code>nit</code> (style preference). The Implementer Agent addresses blocking issues automatically and applies suggestions if they don't regress tests.
+  </p>
+
+  <h3>15.4 Human-Agent Handoff Protocol</h3>
+  <p>
+    When the agent cannot resolve an issue autonomously (max retries exceeded, ambiguous requirements, security-sensitive changes), it creates a structured handoff artifact:
+  </p>
+  <pre><code>{
+  "handoff": {
+    "story_id": "STORY-142",
+    "reason": "oscillating_error",
+    "summary": "Cannot resolve conflict between payment validation and...",
+    "what_was_tried": [
+      { "attempt": 1, "approach": "...", "result": "..." },
+      { "attempt": 2, "approach": "...", "result": "..." }
+    ],
+    "current_state": {
+      "branch": "feature/STORY-142/password-reset",
+      "passing_tests": 47,
+      "failing_tests": 2,
+      "files_changed": ["src/services/payment.ts", "src/routes/checkout.ts"]
+    },
+    "suggested_next_steps": [
+      "Review the interaction between PaymentValidator and StripeClient",
+      "Consider whether the retry logic should be at the service or route level"
+    ],
+    "estimated_human_effort": "30-60 minutes"
+  }
+}</code></pre>
+</section>
+
+<!-- ═══ 16 ═══ -->
+<section id="safety">
+  <h2>16. Safety, Guardrails &amp; Human-in-the-Loop</h2>
+
+  <h3>16.1 Sandboxing</h3>
+  <p>
+    All code generation and execution happens inside isolated sandbox environments (containers, VMs, or cloud workspaces). The sandbox has no access to production data, secrets, or external networks beyond what is explicitly whitelisted per project. Sandboxes are ephemeral — they are created fresh for each story and destroyed after completion.
+  </p>
+
+  <h3>16.2 Approval Gates</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Gate</th><th>Default</th><th>Trigger</th></tr></thead>
+    <tbody>
+      <tr><td><code>pre_code</code></td><td>Disabled</td><td>Requires human approval of the execution plan before coding begins</td></tr>
+      <tr><td><code>pre_deploy</code></td><td>Enabled</td><td>Requires human approval before deploying to any environment</td></tr>
+      <tr><td><code>pre_production</code></td><td>Enabled (locked)</td><td>Always requires approval before production deployment. Cannot be disabled.</td></tr>
+      <tr><td><code>budget_exceeded</code></td><td>Enabled</td><td>Pauses when cost budget is exceeded and asks for authorization to continue</td></tr>
+      <tr><td><code>ambiguity_detected</code></td><td>Enabled</td><td>Pauses when the story has significant ambiguities that could lead to wrong implementation</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>16.3 Safety Boundaries</h3>
+  <ul>
+    <li><strong>No secret access:</strong> The agent never has access to production secrets, API keys, or credentials. Test environments use mock/test credentials only.</li>
+    <li><strong>No destructive operations:</strong> Database migrations, data deletions, and infrastructure teardowns require explicit human approval even in staging.</li>
+    <li><strong>Rate limiting:</strong> Maximum LLM calls per story, maximum file operations per iteration, and maximum deploy attempts are all configurable and enforced.</li>
+    <li><strong>Code scanning:</strong> Generated code passes through static analysis (SAST) before being committed. Known vulnerability patterns are blocked.</li>
+    <li><strong>Rollback capability:</strong> Every deployment is associated with a rollback plan. If post-deploy verification fails, automatic rollback is triggered.</li>
+  </ul>
+
+  <h3>16.4 Policy Engine as a First-Class Subsystem</h3>
+  <p>
+    Because this agent can change production systems, it implements a <strong>policy engine</strong> that mediates every side-effecting action (file modification, network access, secret retrieval, deployment, rollback). The model proposes actions, but the application executes them — therefore the application must validate arguments, permissions, and context. The policy engine supports configurable checkpoints: a <em>design checkpoint</em> (approve plan and architecture changes before code is touched), a <em>security checkpoint</em> (approve changes impacting authn/authz, cryptography, payments, PII), and a <em>release checkpoint</em> (staging deployment is autonomous; production promotion requires approval unless risk is low and guardrails show high confidence).
+  </p>
+
+  <h3>16.5 AI Governance &amp; NIST AI RMF</h3>
+  <p>
+    Beyond software supply chain security, the agent is itself an AI system operating across the lifecycle. The <strong>NIST AI Risk Management Framework (AI RMF 1.0)</strong> provides governance guidance emphasising mapping context, measuring risks, and managing them across the AI lifecycle. In practical terms, this translates into artefacts and controls that must be logged and audited: prompts/config used for each run, tool invocations and outputs, diffs and test results, deployment events, and runtime telemetry tied back to the change that produced it. This is consistent with autonomy research emphasising post-deployment measurement via behavioural telemetry, not only pre-deployment benchmarks.
+  </p>
+
+  <div class="callout warn">
+    <strong>Important:</strong> The agent should never be given credentials to production systems. All production deployments should go through an existing CI/CD pipeline that the agent triggers via API — not through direct access.
+  </div>
+</section>
+
+<!-- ═══ 17 ═══ -->
+<section id="quality-gates">
+  <h2>17. Quality Gates &amp; Acceptance Criteria Verification</h2>
+  <p>
+    Before any story is marked as DONE, it must pass a series of automated quality gates. These gates go beyond "tests pass" to ensure the generated code meets production-quality standards. The agent treats testing as part of requirements satisfaction — BDD's origin explicitly frames behaviour specifications as a way to connect agile analysis to automated acceptance testing via <strong>Given&ndash;When&ndash;Then</strong> scenarios.
+  </p>
+  <p>
+    The test strategy follows the <strong>test pyramid</strong> principle: many low-level unit tests (fast, cheap) and fewer high-level "broad stack" tests (slower, more brittle). The agent invests effort accordingly — generating unit tests around new logic, adding integration tests for service boundaries, and reserving end-to-end tests for critical user journeys tied directly to acceptance criteria. When the agent fixes a defect, it writes a <em>regression lock</em> (a failing test first, then the fix), mirroring how SWE-bench tasks validate code changes against test suites derived from real repositories.
+  </p>
+
+  <h3>17.1 Gate Pipeline</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Gate</th><th>Threshold</th><th>Tool</th><th>Blocking?</th></tr></thead>
+    <tbody>
+      <tr><td>Unit Tests Pass</td><td>100% of related tests pass</td><td>Test Runner</td><td>Yes</td></tr>
+      <tr><td>Code Coverage</td><td>&ge; 80% line coverage on new code (configurable)</td><td>Coverage Reporter</td><td>Yes</td></tr>
+      <tr><td>Type Check</td><td>Zero type errors in changed files</td><td>tsc / mypy / equivalent</td><td>Yes</td></tr>
+      <tr><td>Lint &amp; Format</td><td>Zero lint errors; code matches project formatter</td><td>ESLint, Prettier, Black, etc.</td><td>Yes</td></tr>
+      <tr><td>Security Scan (SAST)</td><td>No high/critical vulnerabilities in new code</td><td>Semgrep / Bandit / CodeQL</td><td>Yes</td></tr>
+      <tr><td>Dependency Audit</td><td>No known CVEs in newly-added packages</td><td><code>npm audit</code> / <code>pip audit</code></td><td>Yes</td></tr>
+      <tr><td>Bundle Size</td><td>No more than 5% increase (for frontend projects)</td><td>Webpack analyzer / esbuild</td><td>Warning</td></tr>
+      <tr><td>Performance Benchmark</td><td>No significant regression on existing benchmarks</td><td>Custom benchmark runner</td><td>Warning</td></tr>
+      <tr><td>Acceptance Criteria</td><td>All criteria from story spec are verified by tests</td><td>Criteria Mapper</td><td>Yes</td></tr>
+      <tr><td>Documentation</td><td>Public APIs have JSDoc/docstrings; README updated if needed</td><td>Doc Checker</td><td>Warning</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>17.2 Acceptance Criteria Verification</h3>
+  <p>
+    The Criteria Mapper is a critical component that connects each acceptance criterion from the story to one or more test cases. It works in two passes:
+  </p>
+  <ul>
+    <li><strong>Forward pass (generation time):</strong> When the Test Generator creates tests, it tags each test with the acceptance criterion it validates using a <code>@criterion</code> annotation.</li>
+    <li><strong>Backward pass (verification time):</strong> The Criteria Mapper checks that every acceptance criterion has at least one associated passing test. Unmapped criteria are flagged and additional tests are generated.</li>
+  </ul>
+
+  <h3>17.3 Regression Detection</h3>
+  <p>
+    The agent runs the full project test suite (not just new tests) to detect regressions. If existing tests fail after the agent's changes, these failures are treated as high-priority bugs and fixed before the story can proceed. The agent's changes are never allowed to break existing functionality — this is a hard constraint.
+  </p>
+</section>
+
+<!-- ═══ 18 ═══ -->
+<section id="deploy">
+  <h2>18. Deployment Architecture</h2>
+
+  <h3>18.1 Agent Runtime</h3>
+  <p>
+    The agent itself runs as a long-lived service with a task queue. Stories are submitted to the queue and processed by worker instances. Each worker runs one story at a time to maintain focused context. Horizontal scaling is achieved by adding more workers.
+  </p>
+
+  <div class="arch-grid">
+    <div class="arch-box">
+      <div class="label">API Gateway</div>
+      <div class="desc">REST/GraphQL endpoint for story submission, status queries, and approval gates</div>
+    </div>
+    <div class="arch-box">
+      <div class="label">Task Queue</div>
+      <div class="desc">Durable message queue (e.g., Redis, RabbitMQ, SQS) for story processing</div>
+    </div>
+    <div class="arch-box">
+      <div class="label">Worker Pool</div>
+      <div class="desc">Stateless workers that pull stories from the queue and execute the agent loop</div>
+    </div>
+    <div class="arch-box">
+      <div class="label">Sandbox Manager</div>
+      <div class="desc">Provisions and manages isolated execution environments for each story</div>
+    </div>
+    <div class="arch-box">
+      <div class="label">State Store</div>
+      <div class="desc">Persistent database for story state, iteration history, and audit logs</div>
+    </div>
+    <div class="arch-box">
+      <div class="label">Memory / Vector DB</div>
+      <div class="desc">Stores embeddings of past experiences for RAG-based self-improvement</div>
+    </div>
+  </div>
+
+  <h3>18.2 Sandbox Environment</h3>
+  <p>
+    Each story gets a fresh sandbox containing: the project's git repository (cloned at the target branch), language runtimes and build tools, test frameworks, and a network policy that allows only whitelisted outbound connections (e.g., package registries). The sandbox is destroyed after the story completes.
+  </p>
+  <p>
+    Because the agent writes and executes code it produced, the platform must assume <strong>untrusted execution</strong>. Two proven isolation approaches are supported: <strong>Firecracker microVMs</strong> (lightweight VMs with improved isolation relative to containers while keeping performance closer to container speed) and <strong>gVisor</strong> (an application kernel interposed between the workload and the host for running untrusted code). A robust execution plane includes: (a) ephemeral, per-attempt workspaces; (b) network egress controls; (c) strict resource quotas; and (d) a controlled tool surface rather than raw shell-by-default — a "defence in depth" approach aligned with production isolation best practices.
+  </p>
+</section>
+
+<!-- ═══ 12 ═══ -->
+<section id="observability">
+  <h2>19. Observability &amp; Monitoring</h2>
+
+  <h3>19.1 Metrics</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Metric</th><th>Description</th><th>Alert Threshold</th></tr></thead>
+    <tbody>
+      <tr><td><code>story_completion_rate</code></td><td>% of stories reaching DONE state</td><td>&lt; 60% over 24h</td></tr>
+      <tr><td><code>avg_iterations_to_complete</code></td><td>Mean iteration count for successful stories</td><td>&gt; 5 (increasing trend)</td></tr>
+      <tr><td><code>avg_time_to_complete</code></td><td>Wall-clock time from RECEIVED to DONE</td><td>&gt; 30 min (p95)</td></tr>
+      <tr><td><code>cost_per_story</code></td><td>Average LLM + compute cost per story</td><td>&gt; $3.00 (increasing trend)</td></tr>
+      <tr><td><code>test_pass_rate_first_attempt</code></td><td>% of stories whose tests pass on first try</td><td>&lt; 40%</td></tr>
+      <tr><td><code>deploy_rollback_rate</code></td><td>% of deployments that trigger automatic rollback</td><td>&gt; 20%</td></tr>
+      <tr><td><code>llm_error_rate</code></td><td>% of LLM calls that fail (timeout, rate limit, error)</td><td>&gt; 5%</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>19.2 Logging &amp; Tracing</h3>
+  <p>
+    Every story execution produces a trace consisting of all orchestrator decisions, LLM calls (with sanitized prompts/responses), test results, and deployment outcomes. Traces are stored for auditing and can be replayed for debugging. Each LLM call is tagged with the story ID, task ID, attempt number, and purpose for cost attribution.
+  </p>
+
+  <h3>19.3 OpenTelemetry Integration</h3>
+  <p>
+    To iterate autonomously after deployment, the system must observe production-like behaviour. <strong>OpenTelemetry</strong> provides standardised telemetry signals (logs, metrics, traces) with correlation context, enabling the agent to connect a regression symptom (e.g., a spike in errors) back to specific requests and spans. All agent-generated services are instrumented with OpenTelemetry SDKs, and the agent can query trace data to diagnose issues it detects during post-deployment verification.
+  </p>
+
+  <h3>19.4 SLOs, SLIs &amp; Error Budgets</h3>
+  <p>
+    Acceptance criteria that reference runtime behaviour (e.g., "latency p95 under X ms") become monitoring assertions via <strong>Service Level Objectives (SLOs)</strong>. An SLO is a target value for a <strong>Service Level Indicator (SLI)</strong>, and <strong>error budgets</strong> quantify allowable unreliability. The agent's Spec Compiler translates performance-related acceptance criteria into SLO definitions that are monitored post-deployment — the story is not marked DONE until the SLO is met over the observation window.
+  </p>
+
+  <h3>19.5 DORA Metrics</h3>
+  <p>
+    For engineering feedback at the system level, the agent tracks <strong>DORA metrics</strong>: deployment frequency, lead time for changes, change failure rate, and time to restore service. These metrics are especially useful for evaluating whether the agent's autonomy is truly improving delivery or merely increasing churn. DORA metrics feed into the self-improvement loop, informing decisions about model routing, prompt optimization, and convergence strategies.
+  </p>
+</section>
+
+<!-- ═══ 13 ═══ -->
+<section id="risks">
+  <h2>20. Risks &amp; Mitigations</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Risk</th><th>Impact</th><th>Likelihood</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Infinite retry loops</td>
+        <td>High (cost, time)</td>
+        <td>Medium</td>
+        <td>Hard iteration cap, diminishing-returns detector, cost budget ceiling</td>
+      </tr>
+      <tr>
+        <td>Generated code introduces security vulnerabilities</td>
+        <td>High</td>
+        <td>Medium</td>
+        <td>Mandatory SAST scanning, code review by independent model, sandboxing</td>
+      </tr>
+      <tr>
+        <td>LLM hallucinations (inventing non-existent APIs)</td>
+        <td>Medium</td>
+        <td>High</td>
+        <td>Codebase index provides real API surface; build step catches invalid imports; tests verify behavior</td>
+      </tr>
+      <tr>
+        <td>Cost overruns from complex stories</td>
+        <td>Medium</td>
+        <td>Medium</td>
+        <td>Per-story budget caps, progressive model downgrading, complexity-based estimation</td>
+      </tr>
+      <tr>
+        <td>Ambiguous stories leading to wrong implementation</td>
+        <td>High</td>
+        <td>High</td>
+        <td>Ambiguity detection triggers human clarification gate before coding begins</td>
+      </tr>
+      <tr>
+        <td>LLM provider outage</td>
+        <td>Medium</td>
+        <td>Low</td>
+        <td>Multi-provider fallback chain; automatic failover in the Model Router</td>
+      </tr>
+      <tr>
+        <td>Sandbox escape or unintended side effects</td>
+        <td>High</td>
+        <td>Low</td>
+        <td>Ephemeral containers, no production access, network whitelisting, resource limits</td>
+      </tr>
+      <tr>
+        <td>Context window overflow losing critical information</td>
+        <td>Medium</td>
+        <td>High</td>
+        <td>Hierarchical context architecture, priority-based eviction, skeleton extraction, task decomposition</td>
+      </tr>
+      <tr>
+        <td>Multi-agent file conflicts and race conditions</td>
+        <td>Medium</td>
+        <td>Medium</td>
+        <td>Advisory file locking, sequential merge queue, shared context bus, contract-first interfaces</td>
+      </tr>
+      <tr>
+        <td>Stale codebase index leading to wrong code references</td>
+        <td>Medium</td>
+        <td>Medium</td>
+        <td>Incremental re-indexing after every code change, hash-based invalidation, dependency-aware propagation</td>
+      </tr>
+      <tr>
+        <td>Agent introduces subtle logic bugs that pass tests</td>
+        <td>High</td>
+        <td>Medium</td>
+        <td>Cross-provider code review, acceptance criteria mapping, regression testing, human review gate on PRs</td>
+      </tr>
+      <tr>
+        <td>Dependency supply chain attacks via added packages</td>
+        <td>High</td>
+        <td>Low</td>
+        <td>Dependency audit gate, package allowlisting, lockfile verification, major version approval requirement</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ═══ 14 ═══ -->
+<section id="roadmap">
+  <h2>21. Implementation Roadmap</h2>
+
+  <h3>Phase 1 — Foundation (Weeks 1-4)</h3>
+  <ul>
+    <li>Build the Orchestrator state machine with basic story lifecycle</li>
+    <li>Implement the LLM Router with support for at least two providers</li>
+    <li>Create sandbox provisioning with Tool Layer (shell, file system, package manager)</li>
+    <li>Build Story Analyzer and Planner components</li>
+    <li>Set up state database and basic API endpoints</li>
+    <li>Implement structured output parsing for common build/test tools</li>
+  </ul>
+
+  <h3>Phase 2 — Codebase Intelligence (Weeks 5-8)</h3>
+  <ul>
+    <li>Build AST indexer and Symbol Table for primary language (TypeScript or Python)</li>
+    <li>Implement Dependency Graph construction and impact analysis</li>
+    <li>Create Convention Profile detector (naming, structure, patterns)</li>
+    <li>Build semantic code search with vector embeddings</li>
+    <li>Implement hierarchical context management with smart file selection</li>
+  </ul>
+
+  <div class="callout">
+    <strong>Milestone 1:</strong> Agent can analyze an existing codebase, understand its conventions, and answer questions about its structure and APIs.
+  </div>
+
+  <h3>Phase 3 — Core Loop (Weeks 9-12)</h3>
+  <ul>
+    <li>Implement Code Generator with full codebase context awareness</li>
+    <li>Build Test Generator in both coverage and criteria modes</li>
+    <li>Implement Build/Test Runner with structured error parsing and classification</li>
+    <li>Wire up the retry loop with error taxonomy and progressive context enrichment</li>
+    <li>Add Code Reviewer component (cross-provider for independence)</li>
+    <li>Implement oscillation detection and convergence strategies</li>
+  </ul>
+
+  <div class="callout">
+    <strong>Milestone 2:</strong> Agent can take a simple user story ("Add a health check endpoint") and produce working, tested code in a sandbox. First end-to-end demo.
+  </div>
+
+  <h3>Phase 4 — Git &amp; Quality (Weeks 13-16)</h3>
+  <ul>
+    <li>Implement Git workflow: branching, atomic commits, PR creation</li>
+    <li>Build the Quality Gates pipeline (coverage, SAST, lint, type check, dependency audit)</li>
+    <li>Implement Acceptance Criteria Mapper (forward + backward verification)</li>
+    <li>Add merge conflict detection and auto-resolution</li>
+    <li>Build the Human-Agent handoff protocol for escalation</li>
+  </ul>
+
+  <h3>Phase 5 — Deployment &amp; Safety (Weeks 17-20)</h3>
+  <ul>
+    <li>Build Deploy Engine with at least two adapter types (container + serverless)</li>
+    <li>Implement Monitor / Verifier with smoke tests and health checks</li>
+    <li>Add all approval gates with notification system</li>
+    <li>Implement automatic rollback on post-deploy failures</li>
+    <li>Build the dashboard/UI for story tracking and approval</li>
+  </ul>
+
+  <h3>Phase 6 — Intelligence &amp; Memory (Weeks 21-24)</h3>
+  <ul>
+    <li>Implement Memory Store with vector embeddings and error fingerprint database</li>
+    <li>Build the Feedback Loop for learning from past iterations</li>
+    <li>Add RAG-augmented prompting for code generation</li>
+    <li>Implement A/B testing framework for model comparison</li>
+    <li>Build observability dashboard with all key metrics</li>
+  </ul>
+
+  <h3>Phase 7 — Multi-Agent &amp; Scale (Weeks 25-30)</h3>
+  <ul>
+    <li>Implement Multi-Agent coordination (Architect, Implementer, Reviewer, DevOps, Docs)</li>
+    <li>Build file locking, shared context bus, and sequential merge queue</li>
+    <li>Add multi-language sandbox support (Python, TypeScript, Go, Rust)</li>
+    <li>Implement batch story processing and parallel execution</li>
+    <li>Build cost optimization engine (dynamic model routing based on historical data)</li>
+    <li>Harden security: penetration testing of sandbox, audit logging review</li>
+    <li>Documentation, runbooks, and operational readiness</li>
+  </ul>
+
+  <div class="callout">
+    <strong>Milestone 3:</strong> Full autonomous loop — agent handles a backlog of user stories, coordinates multi-agent work, deploys to staging, monitors results, and self-improves over time.
+  </div>
+</section>
+
+<!-- ═══ 22 ═══ -->
+<section id="prompt-engineering">
+  <h2>22. Advanced Prompt Engineering &amp; Reasoning Chains</h2>
+  <p>
+    The quality of an autonomous agent's output depends critically on how it constructs prompts. Unlike simple code-generation tools that use a single prompt, this agent uses a multi-stage reasoning pipeline with structured prompt templates, chain-of-thought decomposition, self-reflection loops, and tool-augmented reasoning.
+  </p>
+
+  <h3>22.1 Prompt Architecture</h3>
+  <p>
+    Every LLM call uses a layered prompt architecture. Prompts are not strings — they are structured objects assembled from reusable, versioned template components. This allows A/B testing of prompt strategies and ensures consistency across the system.
+  </p>
+  <pre><code>interface PromptTemplate {
+  id: string;                          // e.g., "code-gen-v4.2"
+  version: string;
+  sections: PromptSection[];
+  variables: Record&lt;string, PromptVariable&gt;;
+  output_schema?: JSONSchema;          // Structured output specification
+  reasoning_mode: "direct" | "chain_of_thought" | "self_reflect" | "tree_of_thought";
+  max_output_tokens: number;
+}
+
+interface PromptSection {
+  role: "system" | "user" | "assistant";
+  template: string;                    // Handlebars-style template with {{variables}}
+  priority: number;                    // For eviction under token pressure
+  required: boolean;                   // Cannot be evicted if true
+  cache_control?: "ephemeral";         // Enable prompt caching for stable prefixes
+}
+
+// Template registry with versioning and rollback
+interface PromptRegistry {
+  get(id: string, version?: string): PromptTemplate;
+  promote(id: string, fromVersion: string, toVersion: string): void;
+  rollback(id: string, toVersion: string): void;
+  experiment(id: string, variants: [string, string], trafficSplit: number): void;
+}</code></pre>
+
+  <h3>22.2 Chain-of-Thought Strategies</h3>
+  <p>
+    Different tasks require different reasoning strategies. The agent selects the optimal reasoning mode based on task complexity:
+  </p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Reasoning Mode</th><th>When Used</th><th>Token Overhead</th><th>Implementation</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Direct Generation</strong></td>
+        <td>Simple, well-defined tasks (rename variable, add import, write docstring)</td>
+        <td>~0%</td>
+        <td>Single prompt &rarr; code output. No intermediate reasoning.</td>
+      </tr>
+      <tr>
+        <td><strong>Chain-of-Thought</strong></td>
+        <td>Standard code generation and bug fixes</td>
+        <td>~30-50%</td>
+        <td>Model reasons step-by-step before generating code. Reasoning is parsed and logged but not included in final output.</td>
+      </tr>
+      <tr>
+        <td><strong>Self-Reflection</strong></td>
+        <td>Complex logic, security-sensitive code, retry attempts</td>
+        <td>~100% (two passes)</td>
+        <td>First pass generates code. Second pass reviews the code against requirements and produces corrections. Final output merges both passes.</td>
+      </tr>
+      <tr>
+        <td><strong>Tree-of-Thought</strong></td>
+        <td>Architectural decisions, ambiguous requirements, multiple valid approaches</td>
+        <td>~200-400%</td>
+        <td>Model explores 2-3 candidate approaches in parallel, evaluates each against acceptance criteria, and selects the best. All branches are logged.</td>
+      </tr>
+      <tr>
+        <td><strong>Debate / Multi-Perspective</strong></td>
+        <td>Code review, security audit, design decisions</td>
+        <td>~150%</td>
+        <td>Two different model calls (possibly different providers) independently assess the same code. Disagreements are resolved by a third "judge" call or flagged for human review.</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>22.3 Self-Reflection Protocol</h3>
+  <p>
+    After generating code, the agent runs a structured self-reflection pass. This is not a simple "review your own code" — it follows a systematic checklist:
+  </p>
+  <pre><code>// Self-reflection prompt structure
+{
+  "reflection_axes": [
+    {
+      "axis": "correctness",
+      "prompt": "Does this code correctly implement all acceptance criteria? Walk through each criterion and verify."
+    },
+    {
+      "axis": "edge_cases",
+      "prompt": "What edge cases are not handled? Consider: null/undefined inputs, empty collections, concurrent access, boundary values, error states."
+    },
+    {
+      "axis": "security",
+      "prompt": "Are there any injection vulnerabilities, unsanitized inputs, hardcoded secrets, or insecure patterns?"
+    },
+    {
+      "axis": "consistency",
+      "prompt": "Does this code follow the project's established patterns? Compare naming, error handling, and structure against the convention profile."
+    },
+    {
+      "axis": "testability",
+      "prompt": "Can the generated tests actually catch real bugs? Are there missing test cases for the edge cases identified above?"
+    },
+    {
+      "axis": "performance",
+      "prompt": "Are there O(n²) loops, unbounded queries, missing indexes, or memory leaks in this code?"
+    }
+  ],
+  "output_format": {
+    "issues_found": [{ "axis": "string", "severity": "critical|warning|info", "description": "string", "fix": "string" }],
+    "confidence_score": "number (0-1)"
+  }
+}</code></pre>
+  <p>
+    If the confidence score falls below 0.7, the agent applies its own suggested fixes and re-runs the reflection. This typically catches 30-40% of issues before the formal code review stage.
+  </p>
+
+  <h3>22.4 Structured Output Enforcement</h3>
+  <p>
+    LLM outputs are unpredictable by nature. The agent uses multiple strategies to ensure outputs conform to expected formats:
+  </p>
+  <ul>
+    <li><strong>JSON Schema constraints:</strong> Where the LLM provider supports it (e.g., Anthropic tool use, OpenAI function calling), outputs are constrained to a JSON schema. The LLM cannot produce invalid structures.</li>
+    <li><strong>Post-processing parsers:</strong> For code outputs, custom parsers extract code blocks from markdown, validate syntax, and apply AST-level transformations (auto-import, format correction).</li>
+    <li><strong>Retry on parse failure:</strong> If the output doesn't parse, the agent retries with a simplified prompt and explicit format examples. Parse failures are tracked — templates that cause frequent parse failures are flagged for revision.</li>
+    <li><strong>Streaming validation:</strong> For long outputs, the agent validates partial output during streaming (e.g., checking bracket balance, import validity) and can abort early if the output is clearly going off track.</li>
+  </ul>
+
+  <h3>22.5 Few-Shot Example Management</h3>
+  <p>
+    The agent maintains a curated library of high-quality examples for each task type, drawn from the project's own codebase. When generating a new service, the prompt includes an abbreviated example of an existing well-structured service from the same project. These examples are dynamically selected based on similarity to the current task, not hardcoded — ensuring they stay relevant as the project evolves.
+  </p>
+  <pre><code>interface FewShotLibrary {
+  // Retrieve the most relevant examples for a given task
+  getExamples(task: Task, maxTokens: number): FewShotExample[];
+
+  // After a story completes successfully, extract high-quality examples
+  extractFromSuccess(story: Story): FewShotExample[];
+
+  // Prune examples that are outdated or no longer match conventions
+  prune(projectProfile: ProjectProfile): PruneResult;
+}
+
+interface FewShotExample {
+  task_type: string;           // "create_service" | "add_endpoint" | "write_test" | etc.
+  description: string;         // Natural language description of what this example shows
+  input_context: string;       // Abbreviated task context
+  output_code: string;         // The exemplary code
+  quality_score: number;       // 0-1, based on test pass rate and review results
+  source_story_id: string;
+  created_at: DateTime;
+  embedding: float[];          // For similarity search
+}</code></pre>
+</section>
+
+<!-- ═══ 23 ═══ -->
+<section id="memory-arch">
+  <h2>23. Advanced Memory Architecture</h2>
+  <p>
+    A truly autonomous agent must learn from experience. The Memory Architecture goes beyond simple RAG — it implements a biologically-inspired multi-tier memory system with episodic, semantic, and procedural memory stores, automatic consolidation, and intelligent forgetting.
+  </p>
+  <div class="callout">
+    <strong>Reflexion Pattern:</strong> Self-improvement is designed as data-driven learning from runs, not uncontrolled self-modification. The <strong>Reflexion</strong> approach provides a concrete pattern: the agent reflects on feedback signals and stores "lessons" in an episodic memory buffer to improve future decisions <em>without updating model weights</em>. Each attempt is stored as an episode (story/spec version, plan, diffs, tool traces, failures, final outcome), structured learnings are extracted (e.g., "When tests fail with X stacktrace in module Y, run command Z and check config file W"), and these learnings are fed into RAG retrieval for future similar tasks and into heuristics for planning.
+  </div>
+
+  <h3>23.1 Memory Tiers</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Memory Tier</th><th>Analogy</th><th>Contents</th><th>Retention</th><th>Access Pattern</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Working Memory</strong></td>
+        <td>Short-term / scratchpad</td>
+        <td>Current story context, in-progress task state, recent tool outputs</td>
+        <td>Duration of current story only</td>
+        <td>Always in context window</td>
+      </tr>
+      <tr>
+        <td><strong>Episodic Memory</strong></td>
+        <td>Personal experiences</td>
+        <td>Full execution traces of past stories: what was tried, what failed, what worked, in temporal order</td>
+        <td>Last 500 stories, then summarized</td>
+        <td>Retrieved by similarity to current task</td>
+      </tr>
+      <tr>
+        <td><strong>Semantic Memory</strong></td>
+        <td>Factual knowledge</td>
+        <td>Distilled patterns, rules, and facts: "In this project, database queries always use the repository pattern", "React components use named exports"</td>
+        <td>Indefinite (with decay scoring)</td>
+        <td>Matched against current context profile</td>
+      </tr>
+      <tr>
+        <td><strong>Procedural Memory</strong></td>
+        <td>Skills / how-to</td>
+        <td>Proven fix strategies: "When Jest mock fails with X error, the fix is Y". Reusable code patterns indexed by task type.</td>
+        <td>Indefinite (reinforced by success)</td>
+        <td>Triggered by error fingerprints or task type</td>
+      </tr>
+      <tr>
+        <td><strong>Project Memory</strong></td>
+        <td>Institutional knowledge</td>
+        <td>Per-project conventions, architectural decisions, known tech debt, team preferences, past PR review feedback</td>
+        <td>Lifetime of the project</td>
+        <td>Always loaded for matching project</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>23.2 Memory Consolidation Pipeline</h3>
+  <p>
+    After each story completes, a background consolidation process extracts durable knowledge from the ephemeral working memory and episodic traces:
+  </p>
+  <pre><code>interface ConsolidationPipeline {
+  // Stage 1: Extract — identify significant events from the story trace
+  extractSignificantEvents(story: CompletedStory): SignificantEvent[];
+
+  // Stage 2: Generalize — convert specific events into reusable patterns
+  generalize(events: SignificantEvent[]): MemoryCandidate[];
+
+  // Stage 3: Deduplicate — merge with existing memories if similar enough
+  deduplicate(candidates: MemoryCandidate[], existing: Memory[]): Memory[];
+
+  // Stage 4: Score — assign initial effectiveness score based on story outcome
+  score(memories: Memory[], storyOutcome: StoryOutcome): ScoredMemory[];
+
+  // Stage 5: Store — persist to vector DB with embeddings
+  store(memories: ScoredMemory[]): void;
+}
+
+// Example consolidation output
+{
+  "type": "procedural",
+  "trigger": "error_fingerprint:TS2339_property_does_not_exist",
+  "pattern": "When TypeScript reports 'Property X does not exist on type Y', check if: (1) the interface definition is imported from the correct file, (2) the property was recently renamed, (3) the type needs to be extended or cast",
+  "success_rate": 0.87,
+  "source_stories": ["STORY-142", "STORY-156", "STORY-189"],
+  "generalized_from": 3
+}</code></pre>
+
+  <h3>23.3 Memory Decay &amp; Forgetting</h3>
+  <p>
+    Not all memories are equally useful. The system implements an intelligent forgetting mechanism based on a modified Ebbinghaus forgetting curve:
+  </p>
+  <ul>
+    <li><strong>Effectiveness decay:</strong> Memories that haven't been used (retrieved and found helpful) within their expected window lose score. A procedural memory unused for 100 stories decays to 50% effectiveness.</li>
+    <li><strong>Contradiction invalidation:</strong> When a new memory contradicts an existing one (e.g., "this project uses callbacks" vs. "this project uses async/await"), the newer memory wins and the older one is archived.</li>
+    <li><strong>Compaction:</strong> Multiple similar memories are periodically merged into a single, higher-quality memory with a combined effectiveness score.</li>
+    <li><strong>Hard limit:</strong> Each memory tier has a maximum capacity. When exceeded, lowest-scoring memories are evicted. This prevents unbounded memory growth and ensures retrieval stays fast.</li>
+  </ul>
+
+  <h3>23.4 Cross-Project Transfer Learning</h3>
+  <p>
+    Some memories are project-specific, but others are generalizable (e.g., "TypeScript strict null checks require guarding against undefined" applies everywhere). The memory system tags memories with a <code>transferability</code> score based on how project-specific the context is. High-transferability memories are stored in a global pool and made available across all projects, while project-specific memories stay scoped.
+  </p>
+  <pre><code>interface TransferAnalysis {
+  // Analyze whether a memory is project-specific or generalizable
+  analyzeTransferability(memory: Memory): {
+    score: number;                     // 0 = very project-specific, 1 = universally applicable
+    dependencies: string[];            // What project-specific context it relies on
+    abstractable: boolean;             // Can the memory be abstracted to remove project specifics?
+    abstracted_version?: Memory;       // The generalized version if abstractable
+  };
+}</code></pre>
+</section>
+
+<!-- ═══ 24 ═══ -->
+<section id="eval-framework">
+  <h2>24. Evaluation &amp; Benchmarking Framework</h2>
+  <p>
+    An autonomous agent must be continuously measured. The Evaluation Framework defines how the system's performance is benchmarked, how model upgrades are tested, and how prompt changes are validated before rollout.
+  </p>
+  <p>
+    The architecture draws on established evaluation approaches: <strong>SWE-bench</strong> is a repository-level benchmark based on real GitHub issues where the agent must modify a repository and pass tests; <strong>SWE-bench Verified</strong> adds human validation to improve scoring reliability; and <strong>SWE-bench-Live</strong> proposes continuously updated benchmarks with dedicated Docker images for reproducibility and reduced contamination risk. The system includes a <strong>"shadow eval" lane</strong>: every major model/router/prompt change is tested against a fixed internal suite plus public benchmarks, and results are tracked over time as part of the agent's own release engineering.
+  </p>
+
+  <h3>24.1 Benchmark Suite</h3>
+  <p>
+    The agent maintains a curated set of benchmark stories — real user stories with known-good implementations. These benchmarks serve as regression tests for the agent itself: when any system component changes (prompt template, model version, routing rule), the benchmark suite runs to verify the change doesn't degrade performance.
+  </p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Benchmark Category</th><th>Stories</th><th>What It Measures</th><th>Key Metric</th></tr></thead>
+    <tbody>
+      <tr><td>Simple CRUD</td><td>10 stories</td><td>Baseline competence: add endpoint, create model, write test</td><td>First-attempt pass rate</td></tr>
+      <tr><td>Bug Fixes</td><td>15 stories</td><td>Error diagnosis, targeted fixes, regression avoidance</td><td>Correct fix rate, iteration count</td></tr>
+      <tr><td>Refactoring</td><td>8 stories</td><td>Understanding existing code, preserving behavior while improving structure</td><td>Test preservation rate, code quality delta</td></tr>
+      <tr><td>Cross-Module Features</td><td>10 stories</td><td>Multi-file changes, dependency management, integration testing</td><td>Integration test pass rate</td></tr>
+      <tr><td>Security-Sensitive</td><td>8 stories</td><td>Auth flows, input validation, secret handling</td><td>SAST clean rate, vulnerability introduction rate</td></tr>
+      <tr><td>Performance-Critical</td><td>5 stories</td><td>Algorithmic efficiency, database query optimization</td><td>Benchmark regression rate</td></tr>
+      <tr><td>Adversarial</td><td>10 stories</td><td>Ambiguous requirements, conflicting constraints, impossible tasks</td><td>Correct escalation rate (should request clarification)</td></tr>
+      <tr><td>Recovery</td><td>8 stories</td><td>Pre-seeded with common error states to test error recovery</td><td>Recovery success rate, iterations to fix</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>24.2 Automated Evaluation Metrics</h3>
+  <pre><code>interface EvalResult {
+  benchmark_id: string;
+  run_id: string;
+  model_config: ModelConfig;
+  prompt_versions: Record&lt;string, string&gt;;
+
+  // Core metrics
+  stories_attempted: number;
+  stories_completed: number;
+  completion_rate: number;              // stories_completed / stories_attempted
+  first_attempt_pass_rate: number;      // % passing on first code generation
+  avg_iterations: number;
+  median_iterations: number;
+  p95_iterations: number;
+
+  // Quality metrics
+  avg_test_coverage: number;            // % line coverage on generated code
+  sast_clean_rate: number;              // % with zero SAST findings
+  lint_clean_rate: number;              // % passing lint on first attempt
+  regression_introduction_rate: number; // % that broke existing tests
+
+  // Efficiency metrics
+  avg_tokens_per_story: number;
+  avg_cost_per_story: number;
+  avg_wall_time_seconds: number;
+  avg_llm_calls_per_story: number;
+
+  // Comparison (if comparing two configs)
+  comparison?: {
+    baseline_run_id: string;
+    delta: Record&lt;string, number&gt;;      // Metric name → change (positive = improvement)
+    significant_changes: string[];       // Metrics with p < 0.05 difference
+    recommendation: "promote" | "reject" | "needs_review";
+  };
+}</code></pre>
+
+  <h3>24.3 A/B Testing Protocol</h3>
+  <p>
+    Before any change to the agent's LLM configuration, prompt templates, or routing rules goes to production, it runs through a structured A/B test:
+  </p>
+  <ul>
+    <li><strong>Shadow mode:</strong> The new configuration runs in parallel with the existing one on real stories (not benchmarks). Both configurations generate code independently, but only the existing config's output is used. Results are compared offline.</li>
+    <li><strong>Canary rollout:</strong> If shadow mode shows improvement, the new config handles 10% of incoming stories for 48 hours. Metrics are monitored for regressions.</li>
+    <li><strong>Full rollout:</strong> If canary metrics are positive, the new config becomes the default. The old config is retained for instant rollback.</li>
+  </ul>
+
+  <h3>24.4 Code Quality Scoring</h3>
+  <p>
+    Beyond pass/fail, the agent scores the quality of its generated code on multiple dimensions. This composite score is used to compare model performance and track quality trends over time:
+  </p>
+  <pre><code>interface CodeQualityScore {
+  correctness: number;         // 0-1: Do all tests pass? Are acceptance criteria met?
+  maintainability: number;     // 0-1: Cyclomatic complexity, function length, nesting depth
+  consistency: number;         // 0-1: How well does the code match project conventions?
+  security: number;            // 0-1: SAST score, known vulnerability patterns
+  test_quality: number;        // 0-1: Coverage, mutation testing survival rate, assertion density
+  documentation: number;       // 0-1: JSDoc/docstring presence, README updates
+  composite: number;           // Weighted average of all dimensions
+
+  // Weights are configurable per project
+  static defaultWeights = {
+    correctness: 0.30,
+    maintainability: 0.20,
+    consistency: 0.15,
+    security: 0.15,
+    test_quality: 0.15,
+    documentation: 0.05
+  };
+}</code></pre>
+</section>
+
+<!-- ═══ 25 ═══ -->
+<section id="threat-model">
+  <h2>25. Security Threat Model &amp; Defense-in-Depth</h2>
+  <p>
+    An autonomous code-generating agent introduces unique security risks. This section provides a formal threat model using STRIDE methodology and defines the defense-in-depth architecture that mitigates each threat category.
+  </p>
+
+  <h3>25.1 STRIDE Threat Analysis</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Threat (STRIDE)</th><th>Attack Vector</th><th>Impact</th><th>Defense</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Spoofing</strong></td>
+        <td>Attacker submits stories impersonating authorized user; hijacks agent session</td>
+        <td>Unauthorized code changes</td>
+        <td>mTLS for API access, JWT with short TTL, session binding to authenticated identity</td>
+      </tr>
+      <tr>
+        <td><strong>Tampering</strong></td>
+        <td>Man-in-the-middle modifies LLM responses; attacker tampers with sandbox filesystem</td>
+        <td>Injected malicious code</td>
+        <td>TLS for all LLM API calls, immutable sandbox base images, filesystem integrity checks (hash verification post-build)</td>
+      </tr>
+      <tr>
+        <td><strong>Repudiation</strong></td>
+        <td>Agent action cannot be traced to a specific story or user; audit trail is incomplete</td>
+        <td>Accountability loss</td>
+        <td>Immutable append-only audit log, cryptographically signed commits, full provenance chain from story &rarr; code &rarr; deploy</td>
+      </tr>
+      <tr>
+        <td><strong>Information Disclosure</strong></td>
+        <td>Agent leaks source code to LLM provider; secrets embedded in generated code; codebase exfiltration via prompt injection</td>
+        <td>IP theft, credential exposure</td>
+        <td>Secret scanning pre-commit (trufflehog/detect-secrets), PII/secret stripping from LLM prompts, data retention agreements with providers, self-hosted model option</td>
+      </tr>
+      <tr>
+        <td><strong>Denial of Service</strong></td>
+        <td>Adversarial story causes infinite loop or resource exhaustion; LLM rate limit abuse</td>
+        <td>System unavailability</td>
+        <td>Per-story resource budgets, circuit breakers, per-tenant rate limits, sandbox resource capping (CPU, memory, disk, network)</td>
+      </tr>
+      <tr>
+        <td><strong>Elevation of Privilege</strong></td>
+        <td>Agent sandbox escape; LLM prompt injection causes agent to execute unauthorized commands; generated code contains backdoors</td>
+        <td>System compromise</td>
+        <td>Minimal sandbox privileges (non-root), command allowlisting, gVisor/Firecracker isolation, SAST + behavioral analysis of generated code, independent cross-provider review</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>25.2 Prompt Injection Defense</h3>
+  <p>
+    Because the agent feeds user-controlled content (user stories) and codebase content into LLM prompts, it is vulnerable to prompt injection attacks. The defense strategy operates at multiple layers:
+  </p>
+  <ul>
+    <li><strong>Input sanitization:</strong> User stories are preprocessed to strip known injection patterns (e.g., "ignore all previous instructions", encoded commands). A classifier model scores injection probability before the story enters the pipeline.</li>
+    <li><strong>Prompt isolation:</strong> User content is always placed in clearly delimited sections (XML tags with randomized nonces) that the system prompt instructs the model to treat as data, never as instructions.</li>
+    <li><strong>Output validation:</strong> All LLM outputs are validated against expected schemas. Unexpected tool calls, file operations outside the project directory, or network requests to non-whitelisted URLs are blocked regardless of what the model outputs.</li>
+    <li><strong>Behavioral monitoring:</strong> An anomaly detector tracks the agent's action patterns. Sudden deviations (e.g., the agent starts reading files outside the project, makes unusually many network requests, or generates code with obfuscation patterns) trigger an automatic pause and alert.</li>
+  </ul>
+
+  <h3>25.3 Supply Chain Security</h3>
+  <p>
+    The agent adds dependencies to projects. This creates a supply chain attack surface:
+  </p>
+  <pre><code>interface DependencyPolicy {
+  // Allowlisted registries (default: npm, pypi, crates.io)
+  allowed_registries: string[];
+
+  // Package approval tiers
+  auto_approve: {
+    conditions: [
+      "weekly_downloads > 100000",
+      "published_more_than_90_days_ago",
+      "no_known_cves",
+      "has_type_definitions",
+      "maintainer_count > 1"
+    ]
+  };
+  manual_review: {
+    conditions: [
+      "weekly_downloads < 10000",
+      "published_less_than_30_days_ago",
+      "new_maintainer_in_last_90_days"
+    ]
+  };
+  always_block: {
+    conditions: [
+      "known_malicious",
+      "typosquat_detected",
+      "install_scripts_present_and_obfuscated"
+    ]
+  };
+
+  // Lockfile enforcement
+  lockfile_policy: "require_exact_versions" | "allow_semver_range";
+
+  // Maximum new dependencies per story
+  max_new_deps_per_story: number;       // Default: 3
+}</code></pre>
+
+  <h4>Build Artefact Integrity</h4>
+  <p>
+    When the agent builds artefacts (containers, packages), supply chain security controls are part of the "Definition of Done". The system implements:
+  </p>
+  <ul>
+    <li><strong>SLSA Framework:</strong> An incrementally adoptable framework/checklist to prevent tampering and improve integrity across the software supply chain. The agent tracks provenance from source to deployed artefact.</li>
+    <li><strong>SBOM Generation:</strong> Every build produces a Software Bill of Materials using <strong>CycloneDX</strong>, a full-stack BOM standard designed for cyber risk reduction, enabling downstream consumers to audit transitive dependencies.</li>
+    <li><strong>Artefact Signing &amp; Verification:</strong> Built images and packages are signed using <strong>cosign</strong> (part of the Sigstore project). Kubernetes admission controls via <strong>Sigstore policy-controller</strong> enforce image signature policies, ensuring only verifiable artefacts run in the cluster — even if internal processes fail.</li>
+  </ul>
+
+  <h3>25.4 Secret Management</h3>
+  <p>
+    The agent never has access to production secrets. Test environments use synthetic credentials managed by a dedicated secret provider:
+  </p>
+  <ul>
+    <li><strong>Test credential rotation:</strong> Sandbox API keys and database passwords rotate every 24 hours and are injected via environment variables at sandbox creation time — never stored in code or config files.</li>
+    <li><strong>Pre-commit secret scanning:</strong> Every generated file passes through <code>detect-secrets</code> and <code>trufflehog</code> before git commit. Matches trigger an immediate block and alert.</li>
+    <li><strong>LLM prompt scrubbing:</strong> Before sending any code context to an LLM, a secret-detection pass removes potential credentials, replacing them with placeholder tokens. The original values are restored in the output via a post-processing step that never touches the LLM.</li>
+  </ul>
+</section>
+
+<!-- ═══ 26 ═══ -->
+<section id="perf-optimization">
+  <h2>26. Performance Optimization &amp; Caching</h2>
+  <p>
+    LLM calls are the bottleneck — both in latency and cost. The performance optimization layer reduces redundant computation through intelligent caching, speculative execution, and parallel processing strategies.
+  </p>
+
+  <h3>26.1 Multi-Level Cache Architecture</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Cache Layer</th><th>Scope</th><th>TTL</th><th>Hit Rate (Typical)</th><th>What It Caches</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Prompt Prefix Cache</strong></td>
+        <td>Per-provider</td>
+        <td>5 minutes</td>
+        <td>60-80%</td>
+        <td>Reuses cached system prompt + project context across multiple LLM calls for the same story. Anthropic and some providers support native prompt caching.</td>
+      </tr>
+      <tr>
+        <td><strong>Embedding Cache</strong></td>
+        <td>Per-project</td>
+        <td>Until file hash changes</td>
+        <td>90%+</td>
+        <td>Code embeddings keyed by file content hash. Avoids re-embedding unchanged files.</td>
+      </tr>
+      <tr>
+        <td><strong>AST Cache</strong></td>
+        <td>Per-project</td>
+        <td>Until file hash changes</td>
+        <td>95%+</td>
+        <td>Parsed ASTs keyed by file content hash. Parsing is CPU-intensive for large files.</td>
+      </tr>
+      <tr>
+        <td><strong>Convention Cache</strong></td>
+        <td>Per-project</td>
+        <td>Until config files change</td>
+        <td>99%</td>
+        <td>Project conventions re-scanned only when lint/format config files or directory structure changes.</td>
+      </tr>
+      <tr>
+        <td><strong>Tool Result Cache</strong></td>
+        <td>Per-sandbox</td>
+        <td>Until relevant files change</td>
+        <td>40-60%</td>
+        <td>Build outputs, test results, lint results. Invalidated by file changes in the relevant scope.</td>
+      </tr>
+      <tr>
+        <td><strong>Semantic Search Cache</strong></td>
+        <td>Per-story</td>
+        <td>Story duration</td>
+        <td>30-50%</td>
+        <td>Vector search results for repeated queries within a story. Common when retrying tasks.</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>26.2 Speculative Execution</h3>
+  <p>
+    The orchestrator can predict likely next steps and start them before the current step completes:
+  </p>
+  <ul>
+    <li><strong>Speculative test generation:</strong> While the Code Generator is producing implementation code, a parallel LLM call generates test skeletons based on the task description and acceptance criteria. The test code is finalized once the implementation is ready.</li>
+    <li><strong>Pre-warm sandbox:</strong> When a story enters PLANNING state, the sandbox manager begins provisioning the environment (cloning repo, installing dependencies). By the time CODING begins, the sandbox is ready.</li>
+    <li><strong>Predictive file loading:</strong> Based on the task description and dependency graph, likely-needed files are pre-loaded into memory and their embeddings pre-fetched before the Code Generator requests them.</li>
+    <li><strong>Optimistic build:</strong> After code generation, the build starts immediately (optimistic path) while the code review runs in parallel. If the review finds blocking issues, the build result is discarded. If the review passes, the build result is ready immediately.</li>
+  </ul>
+
+  <h3>26.3 Parallel Processing Pipeline</h3>
+  <pre><code>// Tasks within a story that can run in parallel
+interface ParallelizationPolicy {
+  // Independent tasks (no shared files) can generate code in parallel
+  code_generation: "parallel_if_independent" | "sequential";
+
+  // Code review and test generation can overlap with build
+  review_and_build: "parallel" | "review_first";
+
+  // Multiple independent test suites can run concurrently
+  test_execution: "parallel_suites" | "sequential";
+
+  // Documentation generation runs alongside final verification
+  documentation: "parallel_with_verification" | "after_verification";
+}
+
+// Example: for a story with 3 independent tasks
+// Sequential: task1 → task2 → task3 → build → test → review → deploy
+// Parallel:   [task1, task2, task3] → [build + review] → test → deploy
+// Savings:    ~40% wall-clock time reduction for multi-task stories</code></pre>
+
+  <h3>26.4 Token Budget Optimization</h3>
+  <p>
+    Every token counts — both for cost and for context window utilization. The agent employs several strategies to minimize token usage without sacrificing output quality:
+  </p>
+  <ul>
+    <li><strong>Diff-based context on retries:</strong> Instead of sending the full file again, send only the diff from the previous attempt plus the error. Saves 40-60% tokens on retry iterations.</li>
+    <li><strong>Skeleton-first file loading:</strong> For reference files (not the target file), load only function signatures and type definitions. Full implementations are loaded only when the Code Generator explicitly requests them via a tool call.</li>
+    <li><strong>Prompt template compression:</strong> System prompts are periodically reviewed and compressed — removing redundant instructions, consolidating examples, and shortening boilerplate. A 10% reduction in system prompt length compounds across thousands of calls.</li>
+    <li><strong>Dynamic temperature:</strong> Simple tasks (rename, add import) use temperature 0 for deterministic output. Complex tasks use 0.3-0.5 for creativity. Retries after failure increase temperature slightly to explore different solution approaches.</li>
+  </ul>
+</section>
+
+<!-- ═══ 27 ═══ -->
+<section id="formal-verification">
+  <h2>27. Formal Verification &amp; Property-Based Testing</h2>
+  <p>
+    Unit tests verify expected behavior for specific inputs. For critical code paths, the agent goes further — using property-based testing, mutation testing, and where applicable, formal verification to provide stronger correctness guarantees.
+  </p>
+
+  <h3>27.1 Property-Based Testing</h3>
+  <p>
+    Instead of testing specific input/output pairs, property-based tests define <em>invariants</em> that must hold for all possible inputs. The agent generates these properties from acceptance criteria:
+  </p>
+  <pre><code>// Traditional unit test (specific input)
+test("add(2, 3) returns 5", () =&gt; {
+  expect(add(2, 3)).toBe(5);
+});
+
+// Property-based test (invariant for ALL inputs)
+test.property("add is commutative", (a: number, b: number) =&gt; {
+  expect(add(a, b)).toBe(add(b, a));
+});
+
+test.property("add has identity element 0", (a: number) =&gt; {
+  expect(add(a, 0)).toBe(a);
+});
+
+// Agent generates these from acceptance criteria:
+// "The payment amount should always equal item price × quantity minus discount"
+test.property("payment calculation invariant",
+  (price: number, qty: number, discount: number) =&gt; {
+    fc.pre(price &gt; 0 &amp;&amp; qty &gt; 0 &amp;&amp; discount &gt;= 0 &amp;&amp; discount &lt;= price * qty);
+    const payment = calculatePayment(price, qty, discount);
+    expect(payment).toBe(price * qty - discount);
+    expect(payment).toBeGreaterThanOrEqual(0);
+  }
+);</code></pre>
+
+  <h3>27.2 Mutation Testing</h3>
+  <p>
+    Mutation testing measures test suite quality by introducing small changes (mutations) to the generated code and checking whether tests catch them. If a mutation survives (tests still pass despite the code change), it indicates a gap in test coverage.
+  </p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Mutation Operator</th><th>Example</th><th>What It Tests</th></tr></thead>
+    <tbody>
+      <tr><td>Boundary mutation</td><td><code>&gt;</code> → <code>&gt;=</code></td><td>Off-by-one errors</td></tr>
+      <tr><td>Negation</td><td><code>isValid</code> → <code>!isValid</code></td><td>Conditional logic</td></tr>
+      <tr><td>Return value</td><td><code>return result</code> → <code>return null</code></td><td>Return value handling</td></tr>
+      <tr><td>Arithmetic</td><td><code>a + b</code> → <code>a - b</code></td><td>Arithmetic correctness</td></tr>
+      <tr><td>Remove statement</td><td>Delete a line of code</td><td>Statement necessity</td></tr>
+      <tr><td>Constant swap</td><td><code>0</code> → <code>1</code>, <code>""</code> → <code>"x"</code></td><td>Magic value handling</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>
+    The agent targets a <strong>mutation score of &ge; 85%</strong> (85% of mutations are killed by tests). When the score is below threshold, the agent generates additional tests specifically targeting the surviving mutations.
+  </p>
+
+  <h3>27.3 Contract Testing for APIs</h3>
+  <p>
+    When the agent generates or modifies API endpoints, it creates contract tests that verify:
+  </p>
+  <ul>
+    <li><strong>Request schema validation:</strong> The endpoint rejects malformed requests with appropriate error codes</li>
+    <li><strong>Response schema compliance:</strong> The response matches the documented schema for all status codes</li>
+    <li><strong>Idempotency:</strong> For applicable HTTP methods, repeated identical requests produce the same result</li>
+    <li><strong>Error contracts:</strong> All error responses follow the project's standard error format</li>
+    <li><strong>Backward compatibility:</strong> If modifying an existing endpoint, existing clients are not broken (new fields are additive, no removed fields, status codes preserved)</li>
+  </ul>
+
+  <h3>27.4 Static Analysis Beyond Linting</h3>
+  <p>
+    In addition to standard linters, the agent runs deeper static analysis on generated code:
+  </p>
+  <ul>
+    <li><strong>Taint analysis:</strong> Tracks data flow from user inputs to security-sensitive sinks (SQL queries, shell commands, file paths) to detect injection vulnerabilities</li>
+    <li><strong>Resource leak detection:</strong> Identifies unclosed database connections, file handles, HTTP clients, and event listeners</li>
+    <li><strong>Null safety analysis:</strong> Beyond TypeScript's strict mode — detects potential null dereferences across function boundaries and async boundaries</li>
+    <li><strong>Concurrency analysis:</strong> For multi-threaded or async code, detects potential race conditions, deadlocks, and shared state mutations without synchronization</li>
+    <li><strong>Complexity gates:</strong> Functions with cyclomatic complexity > 15 or nesting depth > 4 are flagged for decomposition before the code is accepted</li>
+  </ul>
+</section>
+
+<!-- ═══ 28 ═══ -->
+<section id="advanced-deploy">
+  <h2>28. Advanced Deployment Strategies</h2>
+  <p>
+    The basic deploy engine supports push-to-staging. For production-grade autonomous deployment, the agent implements sophisticated release strategies that minimize blast radius and enable safe automated rollouts. Blue/green switches traffic between two environment versions for instant rollback, while canary gradually rolls out to a subset of users/traffic while monitoring key signals. For Kubernetes environments, controllers like <strong>Argo Rollouts</strong> recommend starting with blue/green as simpler, then moving to canaries as metrics maturity improves — this maps neatly to an <em>autonomy roadmap</em>: begin with conservative rollout patterns until the agent proves stable in your environment.
+  </p>
+
+  <h3>28.1 Progressive Delivery Pipeline</h3>
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 900 200" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px;display:block;margin:0 auto">
+      <defs>
+        <marker id="a5" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#6c8cff"/></marker>
+      </defs>
+      <rect x="20" y="70" width="130" height="60" rx="10" fill="#232736" stroke="#34d399" stroke-width="2"/>
+      <text x="85" y="95" fill="#34d399" font-size="11" text-anchor="middle" font-weight="700">Build &amp; Test</text>
+      <text x="85" y="115" fill="#8b8fa7" font-size="10" text-anchor="middle">All gates pass</text>
+
+      <line x1="150" y1="100" x2="180" y2="100" stroke="#6c8cff" stroke-width="1.5" marker-end="url(#a5)"/>
+
+      <rect x="182" y="70" width="130" height="60" rx="10" fill="#232736" stroke="#6c8cff" stroke-width="2"/>
+      <text x="247" y="95" fill="#e2e4ed" font-size="11" text-anchor="middle" font-weight="700">Staging</text>
+      <text x="247" y="115" fill="#8b8fa7" font-size="10" text-anchor="middle">Full smoke tests</text>
+
+      <line x1="312" y1="100" x2="342" y2="100" stroke="#6c8cff" stroke-width="1.5" marker-end="url(#a5)"/>
+
+      <rect x="344" y="70" width="130" height="60" rx="10" fill="#232736" stroke="#a78bfa" stroke-width="2"/>
+      <text x="409" y="95" fill="#a78bfa" font-size="11" text-anchor="middle" font-weight="700">Canary (5%)</text>
+      <text x="409" y="115" fill="#8b8fa7" font-size="10" text-anchor="middle">15 min observe</text>
+
+      <line x1="474" y1="100" x2="504" y2="100" stroke="#6c8cff" stroke-width="1.5" marker-end="url(#a5)"/>
+
+      <rect x="506" y="70" width="130" height="60" rx="10" fill="#232736" stroke="#f59e0b" stroke-width="2"/>
+      <text x="571" y="95" fill="#f59e0b" font-size="11" text-anchor="middle" font-weight="700">Linear Ramp</text>
+      <text x="571" y="115" fill="#8b8fa7" font-size="10" text-anchor="middle">5% → 25% → 50%</text>
+
+      <line x1="636" y1="100" x2="666" y2="100" stroke="#6c8cff" stroke-width="1.5" marker-end="url(#a5)"/>
+
+      <rect x="668" y="70" width="130" height="60" rx="10" fill="#232736" stroke="#34d399" stroke-width="2"/>
+      <text x="733" y="95" fill="#34d399" font-size="11" text-anchor="middle" font-weight="700">Full Rollout</text>
+      <text x="733" y="115" fill="#8b8fa7" font-size="10" text-anchor="middle">100% traffic</text>
+
+      <text x="450" y="170" fill="#8b8fa7" font-size="10" text-anchor="middle">Automatic rollback at any stage if error rate > threshold or latency p99 regresses > 20%</text>
+    </svg>
+    <div class="caption">Figure 4 — Progressive delivery pipeline with automatic rollback at every stage.</div>
+  </div>
+
+  <h3>28.2 Deployment Strategy Selection</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Strategy</th><th>When Used</th><th>Rollback Time</th><th>Risk Level</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Blue-Green</strong></td>
+        <td>Stateless services with fast startup. Full environment swap.</td>
+        <td>&lt; 30 seconds</td>
+        <td>Low (instant rollback)</td>
+      </tr>
+      <tr>
+        <td><strong>Canary</strong></td>
+        <td>High-traffic services where gradual validation is critical.</td>
+        <td>&lt; 1 minute</td>
+        <td>Very Low (limited blast radius)</td>
+      </tr>
+      <tr>
+        <td><strong>Feature Flags</strong></td>
+        <td>New features that need runtime toggles. Code deployed dark, activated separately.</td>
+        <td>Instant (toggle off)</td>
+        <td>Minimal</td>
+      </tr>
+      <tr>
+        <td><strong>Rolling Update</strong></td>
+        <td>Kubernetes deployments with health checks. Pods replaced one at a time.</td>
+        <td>&lt; 5 minutes</td>
+        <td>Low-Medium</td>
+      </tr>
+      <tr>
+        <td><strong>Shadow / Dark Launch</strong></td>
+        <td>High-risk changes. New code receives production traffic copy but responses are discarded.</td>
+        <td>N/A (not serving)</td>
+        <td>None (no user impact)</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>28.3 Automated Rollback Triggers</h3>
+  <pre><code>interface RollbackPolicy {
+  // Metric-based triggers (any one triggers rollback)
+  error_rate_threshold: number;         // Default: 1% increase over baseline
+  latency_p99_regression: number;       // Default: 20% increase
+  latency_p50_regression: number;       // Default: 10% increase
+  cpu_utilization_spike: number;        // Default: 30% increase sustained 5 min
+  memory_leak_detection: boolean;       // Monotonically increasing memory over 10 min
+  crash_loop_threshold: number;         // Default: 3 restarts in 5 minutes
+
+  // Observation windows
+  canary_observation_minutes: number;   // Default: 15
+  ramp_step_observation_minutes: number;// Default: 10
+
+  // Rollback behavior
+  rollback_type: "instant" | "gradual"; // Instant: flip all traffic. Gradual: reverse the ramp.
+  preserve_logs: boolean;               // Keep failed deployment logs for post-mortem
+  notify_channels: string[];            // Slack, PagerDuty, email for rollback notifications
+  auto_create_incident: boolean;        // Create incident ticket on rollback
+}</code></pre>
+
+  <h3>28.4 Feature Flag Integration</h3>
+  <p>
+    For new features, the agent can generate code wrapped in feature flags. This decouples deployment from release — code ships dark and is activated separately, enabling instant kill-switch capability:
+  </p>
+  <pre><code>// Agent generates feature-flagged code automatically for high-risk features
+async function processPayment(order: Order): Promise&lt;PaymentResult&gt; {
+  if (await featureFlags.isEnabled("new-payment-processor", { userId: order.userId })) {
+    return newPaymentProcessor.process(order);  // New implementation
+  }
+  return legacyPaymentProcessor.process(order); // Existing implementation
+}
+
+// The agent also generates:
+// 1. Flag definition in the feature flag config
+// 2. Tests for both code paths
+// 3. Cleanup task to remove the flag after full rollout</code></pre>
+</section>
+
+<!-- ═══ 29 ═══ -->
+<section id="distributed-orchestration">
+  <h2>29. Distributed Agent Orchestration</h2>
+  <p>
+    At scale, a single orchestrator becomes a bottleneck. The distributed orchestration layer enables multiple agent instances to process a backlog of stories concurrently while maintaining consistency, avoiding conflicts, and optimizing resource utilization across a cluster.
+  </p>
+
+  <h3>29.1 Cluster Architecture</h3>
+  <div class="arch-grid">
+    <div class="arch-box arch-full highlight">
+      <div class="label">Coordination Service (Raft Consensus)</div>
+      <div class="desc">Leader election, distributed locks, global state management, work assignment</div>
+    </div>
+    <div class="arch-box">
+      <div class="label">Worker Node A</div>
+      <div class="desc">Orchestrator + Sandbox pool. Processing STORY-142, STORY-145</div>
+    </div>
+    <div class="arch-box">
+      <div class="label">Worker Node B</div>
+      <div class="desc">Orchestrator + Sandbox pool. Processing STORY-143, STORY-147</div>
+    </div>
+    <div class="arch-box">
+      <div class="label">Worker Node C</div>
+      <div class="desc">Orchestrator + Sandbox pool. Processing STORY-144 (complex, needs full resources)</div>
+    </div>
+  </div>
+
+  <h3>29.2 Work Assignment &amp; Scheduling</h3>
+  <pre><code>interface WorkScheduler {
+  // Priority-weighted assignment considering:
+  // - Story priority (user-defined)
+  // - Estimated complexity (from analyzer)
+  // - Resource requirements (model tier, sandbox size)
+  // - Affinity (prefer workers that recently processed same project for warm caches)
+  assign(story: Story, workers: WorkerStatus[]): WorkerAssignment;
+
+  // Preemption: high-priority stories can pause low-priority ones
+  preempt(highPriority: Story, workers: WorkerStatus[]): PreemptionPlan;
+
+  // Load balancing: redistribute work when a worker becomes idle or overloaded
+  rebalance(workers: WorkerStatus[]): RebalancePlan;
+}
+
+interface WorkerStatus {
+  id: string;
+  active_stories: number;
+  max_concurrent: number;               // Based on available resources
+  cpu_utilization: number;
+  memory_utilization: number;
+  active_sandbox_count: number;
+  warm_project_caches: string[];         // Projects with warm AST/embedding caches
+  current_llm_calls_in_flight: number;
+  estimated_completion_times: Record&lt;string, DateTime&gt;;
+}</code></pre>
+
+  <h3>29.3 Distributed Locking &amp; Conflict Prevention</h3>
+  <p>
+    When multiple agents work on stories that touch the same codebase, conflicts must be prevented at the file level, not just the git level:
+  </p>
+  <ul>
+    <li><strong>File-level advisory locks:</strong> Before modifying a file, an agent acquires a distributed lock (via the coordination service) on that file path. Locks are scoped to the project and branch. If the lock is held, the requesting agent either waits (for dependent work) or proceeds with non-conflicting tasks.</li>
+    <li><strong>Semantic conflict detection:</strong> Beyond file-level locks, the system detects semantic conflicts: two stories that modify different files but affect the same API contract, database schema, or shared state. These are identified by the dependency graph and flagged for sequential processing.</li>
+    <li><strong>Optimistic concurrency for reads:</strong> Reading files and running queries against the codebase index does not require locks. Writes use an optimistic concurrency model — if the file changed since the agent last read it, the write fails and the agent re-reads and re-generates.</li>
+    <li><strong>Merge queue with CI verification:</strong> All completed stories enter a sequential merge queue. Each merge triggers a full CI run. If CI fails, the merge is rejected, the agent is notified, and it re-enters the fix loop with the merge conflict as context.</li>
+  </ul>
+
+  <h3>29.4 Failure Recovery &amp; State Persistence</h3>
+  <p>
+    Worker nodes can fail at any time. The system ensures no work is lost:
+  </p>
+  <ul>
+    <li><strong>Checkpointing:</strong> After each state transition (ANALYZING → PLANNING → CODING → etc.), the story's complete state is persisted to the distributed state store. This includes all generated code, test results, and iteration history.</li>
+    <li><strong>Heartbeat monitoring:</strong> Workers send heartbeats every 10 seconds. If a worker misses 3 consecutive heartbeats, the coordination service marks it as failed and reassigns its stories to other workers.</li>
+    <li><strong>Resumable execution:</strong> When a story is reassigned, the new worker loads the checkpoint and resumes from the last persisted state. LLM conversation history is reconstructed from the audit log. The sandbox is re-provisioned from the git branch state.</li>
+    <li><strong>Exactly-once semantics:</strong> Tool executions (git commits, deployments, API calls) use idempotency keys to prevent duplicate actions if a story is replayed after a worker failure.</li>
+  </ul>
+</section>
+
+<!-- ═══ 30 ═══ -->
+<section id="cost-optimization">
+  <h2>30. Cost Optimization Engine</h2>
+  <p>
+    LLM costs can escalate quickly at scale. The Cost Optimization Engine uses historical data, predictive modeling, and dynamic routing to minimize cost while maintaining quality targets.
+  </p>
+
+  <h3>30.1 Cost Model</h3>
+  <pre><code>interface CostModel {
+  // Real-time cost tracking per story
+  track(story_id: string, call: ModelCall): void;
+
+  // Predict total cost for a new story based on similar past stories
+  predict(spec: StorySpec): CostEstimate;
+
+  // Recommend the cheapest model configuration that meets quality targets
+  optimize(task: Task, qualityTarget: number): OptimalConfig;
+}
+
+interface CostEstimate {
+  estimated_total_usd: number;
+  confidence_interval: [number, number];  // 80% CI
+  breakdown: {
+    analysis_usd: number;
+    planning_usd: number;
+    code_generation_usd: number;
+    test_generation_usd: number;
+    review_usd: number;
+    error_fix_usd: number;                // Based on expected retry count
+    documentation_usd: number;
+  };
+  comparable_stories: string[];            // IDs of similar past stories used for estimation
+  estimated_iterations: number;
+}</code></pre>
+
+  <h3>30.2 Dynamic Model Routing</h3>
+  <p>
+    Instead of static routing rules, the cost optimizer learns which model to use for which task types based on historical performance data:
+  </p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Optimization Strategy</th><th>How It Works</th><th>Typical Savings</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Complexity-Based Routing</strong></td>
+        <td>Simple tasks (complexity &le; 3) route to cheaper models. Only complex tasks use top-tier models. Threshold is learned from historical first-attempt pass rates.</td>
+        <td>30-50%</td>
+      </tr>
+      <tr>
+        <td><strong>Cascade Strategy</strong></td>
+        <td>Start with the cheapest model. If the output fails validation or tests, escalate to the next tier. Most tasks succeed on the first tier.</td>
+        <td>20-40%</td>
+      </tr>
+      <tr>
+        <td><strong>Speculative Smaller Model</strong></td>
+        <td>For retry attempts, first try a smaller/cheaper model with the enriched error context. Error fixes are often simpler than initial generation and don't need top-tier models.</td>
+        <td>15-25%</td>
+      </tr>
+      <tr>
+        <td><strong>Batch Embedding</strong></td>
+        <td>Queue embedding requests and process them in batches rather than one-at-a-time. Embedding APIs often have lower per-token costs at batch scale.</td>
+        <td>10-20%</td>
+      </tr>
+      <tr>
+        <td><strong>Off-Peak Scheduling</strong></td>
+        <td>For non-urgent stories, schedule LLM calls during off-peak hours when provider pricing may be lower or rate limits less constrained.</td>
+        <td>5-15%</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>30.3 Budget Allocation &amp; Guardrails</h3>
+  <pre><code>interface BudgetPolicy {
+  // Per-story limits
+  max_cost_per_story: number;             // Default: $5.00
+  warning_threshold: number;              // Default: 0.8 (80% of max)
+  escalation_action: "pause" | "downgrade_model" | "notify_and_continue";
+
+  // Per-project limits
+  daily_budget: number;                   // Maximum daily spend per project
+  monthly_budget: number;                 // Maximum monthly spend per project
+
+  // Per-organization limits
+  org_monthly_budget: number;
+
+  // Allocation strategy
+  priority_allocation: {
+    high_priority_reserve: number;        // % of budget reserved for high-priority stories
+    low_priority_max_model_tier: string;  // e.g., "mid" — low-priority stories can't use top-tier
+  };
+
+  // Cost alerts
+  alerts: {
+    per_story_exceeded: boolean;
+    daily_80_percent: boolean;
+    monthly_80_percent: boolean;
+    cost_per_story_trend_increasing: boolean;
+  };
+}</code></pre>
+
+  <h3>30.4 ROI Tracking</h3>
+  <p>
+    The system tracks return on investment by comparing the agent's cost against estimated human developer cost for the same stories:
+  </p>
+  <ul>
+    <li><strong>Time saved:</strong> Estimated hours a developer would spend on the story (based on complexity score and historical data from similar manual stories) × average developer hourly rate</li>
+    <li><strong>Agent cost:</strong> Actual LLM + compute cost for the story</li>
+    <li><strong>Quality delta:</strong> Comparison of agent-generated code quality scores against historical human-written code quality scores for similar stories</li>
+    <li><strong>Iteration efficiency:</strong> Trend of iterations-to-completion over time, showing the agent's learning curve</li>
+  </ul>
+  <div class="callout">
+    <strong>Target ROI:</strong> The system targets a minimum 3x cost efficiency vs. manual development (i.e., agent cost should be less than 33% of equivalent human developer cost). Stories where the agent consistently fails to achieve this ratio are flagged for analysis — they may indicate task types better suited to human developers.
+  </div>
+</section>
+
+  </div><!-- .content -->
+
+  <footer>
+    <p>Autonomous Software Development Agent — System Design v3.0 — March 2026</p>
+  </footer>
+</div><!-- .main -->
+
+<!-- Back to top -->
+<a href="#top" class="back-top" id="backTop" aria-label="Back to top">&uarr;</a>
+
+<script>
+// ── Sidebar toggle (mobile) ──
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.querySelector('.overlay').classList.toggle('show');
+}
+
+// Close sidebar when clicking a link (mobile)
+document.querySelectorAll('.sidebar a').forEach(a => {
+  a.addEventListener('click', () => {
+    if (window.innerWidth <= 768) {
+      document.getElementById('sidebar').classList.remove('open');
+      document.querySelector('.overlay').classList.remove('show');
+    }
+  });
+});
+
+// ── Active section highlighting ──
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('.sidebar li a[data-section]');
+
+function updateActiveLink() {
+  let current = '';
+  sections.forEach(section => {
+    const top = section.getBoundingClientRect().top;
+    if (top <= 120) current = section.id;
+  });
+  navLinks.forEach(link => {
+    link.classList.toggle('active', link.dataset.section === current);
+  });
+}
+
+// ── Back to top visibility ──
+function updateBackTop() {
+  const btn = document.getElementById('backTop');
+  btn.classList.toggle('show', window.scrollY > 400);
+}
+
+// Throttled scroll handler
+let ticking = false;
+window.addEventListener('scroll', () => {
+  if (!ticking) {
+    requestAnimationFrame(() => {
+      updateActiveLink();
+      updateBackTop();
+      ticking = false;
+    });
+    ticking = true;
+  }
+});
+
+// Initial call
+updateActiveLink();
+</script>
+
+</body>
+</html>

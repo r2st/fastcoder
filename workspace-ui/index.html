@@ -1,0 +1,1779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevAgent - Your AI Development Assistant</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', system-ui, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            overflow: hidden;
+        }
+
+        #root { width: 100vw; height: 100vh; display: flex; flex-direction: column; }
+
+        /* ── Header ── */
+        .header {
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 60px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .header-left { display: flex; align-items: center; gap: 16px; }
+        .logo { font-size: 17px; font-weight: 700; color: #6366f1; display: flex; align-items: center; gap: 8px; }
+        .logo-icon { width: 28px; height: 28px; background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 15px; font-weight: 800; }
+        .connection-badge { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #64748b; background: #f1f5f9; padding: 4px 10px; border-radius: 20px; }
+        .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; }
+        .conn-dot.offline { background: #ef4444; }
+        .header-right { display: flex; gap: 16px; align-items: center; font-size: 13px; color: #64748b; }
+        .header-stat { display: flex; align-items: center; gap: 6px; }
+        .header-stat strong { color: #1e293b; }
+        .notif-badge { background: #ef4444; color: #fff; font-size: 11px; font-weight: 700; border-radius: 10px; padding: 1px 7px; min-width: 18px; text-align: center; }
+
+        /* ── Layout ── */
+        .main-layout { display: flex; flex: 1; overflow: hidden; }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            width: 220px;
+            background: #ffffff;
+            border-right: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            padding: 16px 12px;
+            gap: 4px;
+            overflow-y: auto;
+        }
+        .sidebar-section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #94a3b8; padding: 12px 12px 6px; }
+        .nav-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 12px; border-radius: 8px;
+            cursor: pointer; font-size: 14px; font-weight: 500;
+            color: #475569; transition: all 0.15s; border: 2px solid transparent;
+        }
+        .nav-item:hover { background: #f1f5f9; color: #1e293b; }
+        .nav-item.active { background: #eef2ff; color: #6366f1; border-color: #c7d2fe; font-weight: 600; }
+        .nav-icon { font-size: 17px; width: 24px; text-align: center; flex-shrink: 0; }
+        .nav-badge { margin-left: auto; background: #ef4444; color: #fff; font-size: 11px; font-weight: 700; border-radius: 10px; padding: 1px 7px; }
+
+        /* ── Content ── */
+        .content { flex: 1; overflow-y: auto; padding: 32px; background: #f8fafc; }
+        .content-inner { max-width: 900px; }
+
+        /* ── Page Title ── */
+        .page-title { font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+        .page-subtitle { font-size: 14px; color: #64748b; margin-bottom: 24px; }
+
+        /* ── Cards ── */
+        .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 16px; transition: box-shadow 0.15s; }
+        .card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+
+        /* ── Stat Cards ── */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; }
+        .stat-card-icon { font-size: 24px; margin-bottom: 8px; }
+        .stat-card-value { font-size: 28px; font-weight: 700; color: #0f172a; margin-bottom: 2px; }
+        .stat-card-label { font-size: 13px; color: #64748b; }
+
+        /* ── Chart ── */
+        .chart-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 24px; }
+        .chart-title { font-size: 15px; font-weight: 600; color: #0f172a; margin-bottom: 16px; }
+        .chart-bars { display: flex; gap: 8px; align-items: flex-end; height: 120px; }
+        .chart-bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+        .chart-bar { width: 100%; border-radius: 4px 4px 0 0; min-height: 4px; transition: all 0.3s; }
+        .chart-bar:hover { opacity: 0.85; }
+        .chart-label { font-size: 10px; color: #64748b; text-align: center; line-height: 1.2; }
+        .chart-value { font-size: 12px; font-weight: 600; color: #0f172a; }
+
+        /* ── Forms ── */
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; color: #1e293b; }
+        .form-hint { font-size: 12px; color: #94a3b8; margin-bottom: 8px; display: block; }
+        .form-input, .form-textarea, .form-select {
+            width: 100%; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px;
+            padding: 10px 14px; color: #1e293b; font-family: inherit; font-size: 14px; transition: all 0.15s;
+        }
+        .form-input:focus, .form-textarea:focus, .form-select:focus {
+            outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+        }
+        .form-input::placeholder, .form-textarea::placeholder { color: #94a3b8; }
+        .form-textarea { resize: vertical; min-height: 100px; }
+
+        /* ── Buttons ── */
+        .btn {
+            padding: 10px 18px; border: none; border-radius: 8px; font-size: 14px;
+            font-weight: 600; cursor: pointer; transition: all 0.15s;
+            display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+        }
+        .btn-primary { background: #6366f1; color: #fff; }
+        .btn-primary:hover { background: #4f46e5; }
+        .btn-primary:disabled { background: #a5b4fc; cursor: not-allowed; }
+        .btn-secondary { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+        .btn-secondary:hover { background: #e2e8f0; }
+        .btn-success { background: #22c55e; color: #fff; }
+        .btn-success:hover { background: #16a34a; }
+        .btn-danger { background: #ef4444; color: #fff; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-sm { padding: 6px 12px; font-size: 13px; }
+        .btn-full { width: 100%; justify-content: center; }
+
+        /* ── Type Selector ── */
+        .type-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+        .type-card {
+            background: #fff; border: 2px solid #e2e8f0; border-radius: 10px;
+            padding: 14px 12px; text-align: center; cursor: pointer; transition: all 0.15s;
+        }
+        .type-card:hover { border-color: #c7d2fe; background: #f8faff; }
+        .type-card.selected { border-color: #6366f1; background: #eef2ff; }
+        .type-card-icon { font-size: 22px; margin-bottom: 4px; }
+        .type-card-label { font-size: 13px; font-weight: 600; color: #334155; }
+        .type-card.selected .type-card-label { color: #6366f1; }
+
+        /* ── Priority Pills ── */
+        .priority-row { display: flex; gap: 10px; }
+        .priority-pill {
+            flex: 1; padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px;
+            background: #fff; cursor: pointer; text-align: center; font-weight: 600; font-size: 13px; transition: all 0.15s;
+        }
+        .priority-pill:hover { border-color: #c7d2fe; }
+        .priority-pill.selected { border-width: 2px; }
+        .priority-pill.low { color: #16a34a; } .priority-pill.low.selected { border-color: #16a34a; background: #f0fdf4; }
+        .priority-pill.medium { color: #2563eb; } .priority-pill.medium.selected { border-color: #2563eb; background: #eff6ff; }
+        .priority-pill.high { color: #d97706; } .priority-pill.high.selected { border-color: #d97706; background: #fffbeb; }
+        .priority-pill.critical { color: #dc2626; } .priority-pill.critical.selected { border-color: #dc2626; background: #fef2f2; }
+
+        /* ── Tags ── */
+        .tags-row { display: flex; flex-wrap: wrap; gap: 8px; min-height: 28px; }
+        .tag {
+            background: #eef2ff; border: 1px solid #c7d2fe; color: #4f46e5;
+            padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .tag-remove { cursor: pointer; opacity: 0.5; font-size: 14px; }
+        .tag-remove:hover { opacity: 1; }
+
+        /* ── Badges ── */
+        .state-badge {
+            display: inline-block; padding: 4px 10px; border-radius: 20px;
+            font-size: 12px; font-weight: 600; white-space: nowrap;
+        }
+        .state-badge.received { background: #dbeafe; color: #1d4ed8; }
+        .state-badge.analyzing { background: #ede9fe; color: #6d28d9; }
+        .state-badge.planning { background: #f3e8ff; color: #7c3aed; }
+        .state-badge.coding { background: #e0e7ff; color: #4338ca; }
+        .state-badge.reviewing { background: #fce7f3; color: #be185d; }
+        .state-badge.testing { background: #fef3c7; color: #b45309; }
+        .state-badge.deploying { background: #ffedd5; color: #c2410c; }
+        .state-badge.verifying { background: #ccfbf1; color: #0f766e; }
+        .state-badge.done { background: #dcfce7; color: #15803d; }
+        .state-badge.failed { background: #fee2e2; color: #b91c1c; }
+
+        .priority-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+        .priority-badge.low { background: #dcfce7; color: #15803d; }
+        .priority-badge.medium { background: #dbeafe; color: #1d4ed8; }
+        .priority-badge.high { background: #fef3c7; color: #b45309; }
+        .priority-badge.critical { background: #fee2e2; color: #b91c1c; }
+
+        .gate-badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; color: #fff; }
+
+        /* ── Stories ── */
+        .story-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; margin-bottom: 12px; cursor: pointer; transition: all 0.15s; }
+        .story-card:hover { border-color: #c7d2fe; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .story-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .story-id { font-size: 12px; color: #94a3b8; margin-bottom: 2px; font-family: monospace; }
+        .story-title { font-size: 15px; font-weight: 600; color: #0f172a; margin-bottom: 6px; }
+        .story-meta { display: flex; gap: 12px; font-size: 12px; color: #64748b; align-items: center; }
+        .story-badges { display: flex; gap: 8px; align-items: center; }
+        .story-expanded { margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+
+        /* ── Pipeline ── */
+        .pipeline { display: flex; align-items: center; gap: 4px; margin: 16px 0; padding: 14px; background: #f8fafc; border-radius: 10px; overflow-x: auto; }
+        .pipeline-step {
+            display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 60px;
+        }
+        .pipeline-dot {
+            width: 28px; height: 28px; border-radius: 50%; background: #e2e8f0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: 700; color: #94a3b8; transition: all 0.2s;
+        }
+        .pipeline-dot.completed { background: #dcfce7; color: #15803d; }
+        .pipeline-dot.active { background: #6366f1; color: #fff; animation: stepPulse 2s infinite; }
+        .pipeline-dot.failed { background: #fee2e2; color: #b91c1c; }
+        .pipeline-label { font-size: 9px; color: #64748b; text-align: center; line-height: 1.2; max-width: 60px; }
+        .pipeline-line { width: 12px; height: 2px; background: #e2e8f0; flex-shrink: 0; margin-bottom: 16px; }
+        .pipeline-line.completed { background: #22c55e; }
+
+        @keyframes stepPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.5); } 50% { box-shadow: 0 0 0 6px rgba(99,102,241,0); } }
+
+        /* ── Sections ── */
+        .section-title { font-size: 14px; font-weight: 700; color: #0f172a; margin: 20px 0 12px; }
+
+        /* ── Plan Items ── */
+        .plan-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 8px; }
+        .plan-action-badge { display: inline-block; background: #eef2ff; color: #4f46e5; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-bottom: 6px; }
+        .plan-desc { font-size: 13px; color: #334155; }
+        .plan-target { font-size: 12px; color: #64748b; margin-top: 4px; }
+
+        /* ── Iterations ── */
+        .iter-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 8px; }
+        .iter-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; }
+        .iter-title { font-weight: 600; color: #334155; font-size: 14px; }
+        .iter-body { margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; }
+
+        /* ── File Changes ── */
+        .file-change { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 8px; font-size: 13px; }
+        .file-change-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .file-type-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+        .file-type-badge.created { background: #dcfce7; color: #15803d; }
+        .file-type-badge.modified { background: #dbeafe; color: #1d4ed8; }
+        .file-type-badge.deleted { background: #fee2e2; color: #b91c1c; }
+        .file-path { color: #475569; font-family: 'Monaco','Courier New',monospace; font-size: 12px; }
+        .diff-view { background: #fafafa; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; margin-top: 8px; font-family: 'Monaco','Courier New',monospace; font-size: 11px; line-height: 1.6; max-height: 300px; overflow-y: auto; }
+        .diff-line { display: flex; }
+        .diff-line.added { background: #dcfce7; }
+        .diff-line.removed { background: #fee2e2; }
+        .diff-line-num { display: inline-block; width: 30px; color: #94a3b8; text-align: right; padding-right: 12px; flex-shrink: 0; }
+        .diff-marker { display: inline-block; width: 12px; flex-shrink: 0; text-align: center; }
+        .diff-line.added .diff-marker { color: #16a34a; }
+        .diff-line.removed .diff-marker { color: #dc2626; }
+        .diff-content { flex: 1; overflow-x: auto; }
+
+        /* ── Test Results ── */
+        .test-summary { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 12px; }
+        .test-counts { display: flex; gap: 16px; margin-bottom: 10px; font-size: 13px; }
+        .test-bar { width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; display: flex; }
+        .test-bar-pass { background: #22c55e; height: 100%; }
+        .test-bar-fail { background: #ef4444; height: 100%; }
+        .test-failure { background: #fef2f2; border-left: 3px solid #ef4444; padding: 12px; margin-bottom: 8px; border-radius: 4px; font-size: 13px; }
+        .test-name { font-weight: 600; color: #334155; margin-bottom: 4px; }
+        .test-error { color: #b91c1c; font-family: monospace; font-size: 11px; white-space: pre-wrap; }
+
+        /* ── Review Issues ── */
+        .review-issue { background: #f8fafc; border-left: 3px solid #e2e8f0; padding: 12px; margin-bottom: 8px; border-radius: 4px; font-size: 13px; }
+        .review-issue.blocking { border-left-color: #ef4444; background: #fef2f2; }
+        .review-issue.suggestion { border-left-color: #f59e0b; background: #fffbeb; }
+        .review-issue.nit { border-left-color: #94a3b8; background: #f8fafc; }
+        .review-sev { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; margin-bottom: 6px; color: #fff; }
+        .review-sev.blocking { background: #ef4444; }
+        .review-sev.suggestion { background: #f59e0b; }
+        .review-sev.nit { background: #94a3b8; }
+        .review-msg { color: #334155; }
+
+        /* ── Approvals ── */
+        .approval-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+        .approval-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+        .approval-story-id { font-size: 12px; color: #94a3b8; margin-bottom: 2px; font-family: monospace; }
+        .approval-title { font-size: 15px; font-weight: 600; color: #0f172a; margin-bottom: 6px; }
+        .approval-meta { display: flex; gap: 12px; font-size: 12px; color: #64748b; margin-bottom: 12px; }
+        .approval-actions { display: flex; gap: 8px; }
+
+        /* ── Activity ── */
+        .activity-item { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+        .activity-item:last-child { border-bottom: none; }
+        .activity-icon { font-size: 18px; flex-shrink: 0; width: 28px; text-align: center; }
+        .activity-content { flex: 1; }
+        .activity-title { color: #0f172a; margin-bottom: 2px; font-weight: 500; }
+        .activity-detail { color: #64748b; font-size: 12px; margin-bottom: 2px; }
+        .activity-time { color: #94a3b8; font-size: 11px; }
+        .activity-link { color: #6366f1; cursor: pointer; text-decoration: none; }
+        .activity-link:hover { text-decoration: underline; }
+
+        /* ── Collapsible ── */
+        .collapse-header {
+            display: flex; justify-content: space-between; align-items: center;
+            cursor: pointer; user-select: none; padding: 12px 16px;
+            background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+            font-weight: 600; font-size: 14px; color: #475569; margin-bottom: 12px; transition: all 0.15s;
+        }
+        .collapse-header:hover { border-color: #c7d2fe; }
+        .collapse-header.open { border-color: #6366f1; background: #eef2ff; color: #4f46e5; }
+        .collapse-arrow { transition: transform 0.2s; font-size: 12px; }
+        .collapse-arrow.open { transform: rotate(180deg); }
+        .collapse-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+        .collapse-body.open { max-height: 2000px; margin-bottom: 12px; }
+
+        /* ── Empty States ── */
+        .empty-state { text-align: center; padding: 48px 24px; }
+        .empty-icon { font-size: 48px; margin-bottom: 12px; }
+        .empty-title { font-size: 18px; font-weight: 600; color: #0f172a; margin-bottom: 6px; }
+        .empty-desc { font-size: 14px; color: #64748b; max-width: 400px; margin: 0 auto 20px; line-height: 1.6; }
+
+        /* ── Welcome Banner ── */
+        .welcome-banner {
+            background: linear-gradient(135deg, #eef2ff 0%, #faf5ff 100%);
+            border: 1px solid #c7d2fe; border-radius: 16px; padding: 32px;
+            margin-bottom: 24px; text-align: center;
+        }
+        .welcome-title { font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 8px; }
+        .welcome-desc { font-size: 14px; color: #475569; max-width: 500px; margin: 0 auto 20px; line-height: 1.6; }
+        .welcome-steps { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+        .welcome-step { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; width: 160px; text-align: center; }
+        .welcome-step-num { width: 28px; height: 28px; border-radius: 50%; background: #6366f1; color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; }
+        .welcome-step-text { font-size: 13px; color: #334155; }
+
+        /* ── Success Banner ── */
+        .success-banner { background: #f0fdf4; border: 1px solid #86efac; border-radius: 10px; padding: 16px 20px; margin-bottom: 24px; color: #15803d; display: flex; align-items: center; gap: 10px; }
+
+        /* ── Toast ── */
+        .toast-container { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 9999; pointer-events: none; }
+        .toast { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px; min-width: 280px; display: flex; gap: 10px; align-items: flex-start; animation: toastIn 0.3s ease; pointer-events: all; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .toast-icon { font-size: 18px; flex-shrink: 0; }
+        .toast-content { flex: 1; }
+        .toast-title { font-weight: 600; color: #0f172a; margin-bottom: 2px; font-size: 14px; }
+        .toast-message { font-size: 13px; color: #475569; }
+        .toast.success .toast-icon { color: #22c55e; }
+        .toast.error .toast-icon { color: #ef4444; }
+        .toast.info .toast-icon { color: #6366f1; }
+
+        /* ── Loading ── */
+        .skeleton { background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        .skeleton-line { height: 12px; margin-bottom: 8px; }
+        .skeleton-card { padding: 20px; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 12px; }
+
+        /* ── Tooltip ── */
+        .tooltip-wrap { position: relative; display: inline-flex; align-items: center; gap: 4px; }
+        .tooltip-icon { width: 16px; height: 16px; border-radius: 50%; background: #e2e8f0; color: #64748b; font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; cursor: help; }
+        .tooltip-icon:hover + .tooltip-text { display: block; }
+        .tooltip-text { display: none; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #1e293b; color: #fff; font-size: 12px; padding: 8px 12px; border-radius: 6px; white-space: nowrap; z-index: 100; margin-bottom: 6px; font-weight: 400; max-width: 280px; white-space: normal; line-height: 1.4; }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* ── Projects ── */
+        .project-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top: 16px; }
+        .project-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.15s; position: relative; overflow: hidden; }
+        .project-card:hover { border-color: #6366f1; box-shadow: 0 2px 8px rgba(99,102,241,0.1); }
+        .project-card-stripe { position: absolute; top: 0; left: 0; right: 0; height: 4px; }
+        .project-card-name { font-size: 16px; font-weight: 600; margin-top: 8px; color: #1e293b; }
+        .project-card-desc { font-size: 13px; color: #64748b; margin-top: 4px; line-height: 1.4; }
+        .project-card-meta { display: flex; gap: 16px; margin-top: 12px; font-size: 12px; color: #94a3b8; }
+        .project-selector { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+        .project-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; border: 1.5px solid #e2e8f0; background: #fff; cursor: pointer; font-size: 13px; transition: all 0.15s; }
+        .project-chip:hover { border-color: #6366f1; }
+        .project-chip.selected { border-color: #6366f1; background: #eef2ff; color: #4f46e5; font-weight: 500; }
+        .project-chip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .project-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; display: flex; align-items: center; justify-content: center; }
+        .project-modal { background: #fff; border-radius: 16px; padding: 28px; width: 440px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+        .project-modal h3 { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+        .color-picker { display: flex; gap: 8px; margin-top: 8px; }
+        .color-swatch { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all 0.15s; }
+        .color-swatch:hover { transform: scale(1.15); }
+        .color-swatch.selected { border-color: #1e293b; transform: scale(1.15); }
+        .project-filter-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+        .project-filter-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; border-radius: 16px; border: 1px solid #e2e8f0; background: #fff; cursor: pointer; font-size: 12px; transition: all 0.15s; }
+        .project-filter-chip:hover { border-color: #6366f1; }
+        .project-filter-chip.active { border-color: #6366f1; background: #eef2ff; color: #4f46e5; font-weight: 500; }
+
+        @media (max-width: 768px) {
+            .sidebar { width: 56px; padding: 12px 4px; }
+            .nav-item span:not(.nav-icon) { display: none; }
+            .nav-item { justify-content: center; padding: 10px 8px; }
+            .content { padding: 20px 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useCallback, useRef } = React;
+
+        /* ── API ── */
+        const API_BASE = '/api/v1/ops';
+
+        let _bearerToken = null;
+        const _tokenReady = fetch('/auth/token')
+            .then(r => r.ok ? r.json() : Promise.reject('no token'))
+            .then(d => { _bearerToken = d.token; })
+            .catch(() => console.warn('Could not fetch API token — will use session cookie'));
+
+        const apiCall = async (method, endpoint, data = null) => {
+            await _tokenReady;
+            const headers = { 'Content-Type': 'application/json' };
+            if (_bearerToken) headers['Authorization'] = `Bearer ${_bearerToken}`;
+            const options = { method, headers, credentials: 'include' };
+            if (data) options.body = JSON.stringify(data);
+            const response = await fetch(`${API_BASE}${endpoint}`, options);
+            if (response.status === 401) {
+                // Session expired or not logged in — redirect to login
+                window.location.href = '/login';
+                throw new Error('Not authenticated');
+            }
+            if (!response.ok) throw new Error(`API error: ${response.status}`);
+            return await response.json();
+        };
+
+        // Check auth on load — redirect to login if not authenticated
+        const _authUser = { current: null };
+        const _authReady = fetch('/auth/me', { credentials: 'include' })
+            .then(r => {
+                if (!r.ok) throw new Error('not authed');
+                return r.json();
+            })
+            .then(u => { _authUser.current = u; })
+            .catch(() => {
+                // Not logged in — only redirect if token also fails
+                if (!_bearerToken) {
+                    // Give _tokenReady a moment to resolve
+                    _tokenReady.then(() => {
+                        if (!_bearerToken) window.location.href = '/login';
+                    });
+                }
+            });
+
+        /* ── Helpers ── */
+        const STATE_LABELS = {
+            RECEIVED: 'Received', ANALYZING: 'Analyzing', PLANNING: 'Planning',
+            CODING: 'Writing Code', REVIEWING: 'Reviewing', TESTING: 'Testing',
+            DEPLOYING: 'Deploying', VERIFYING: 'Verifying', DONE: 'Completed', FAILED: 'Failed'
+        };
+        const STATE_COLORS = {
+            RECEIVED: '#3b82f6', ANALYZING: '#8b5cf6', PLANNING: '#a855f7',
+            CODING: '#6366f1', REVIEWING: '#ec4899', TESTING: '#d97706',
+            DEPLOYING: '#ea580c', VERIFYING: '#0d9488', DONE: '#22c55e', FAILED: '#ef4444'
+        };
+        const ACTIVITY_ICONS = {
+            instruction_submitted: '📋', state_changed: '🔄', approval_requested: '🔔',
+            approval_decided: '✅', iteration_started: '▶️', iteration_completed: '✔️',
+            error_occurred: '⚠️', story_completed: '🎉', story_failed: '❌',
+            file_changed: '📄', test_run: '🧪', code_reviewed: '🔍', human_feedback: '💬'
+        };
+
+        function relativeTime(ts) {
+            const ago = Date.now() - new Date(ts).getTime();
+            const mins = Math.floor(ago / 60000);
+            if (mins < 1) return 'just now';
+            if (mins < 60) return `${mins}m ago`;
+            const hours = Math.floor(mins / 60);
+            if (hours < 24) return `${hours}h ago`;
+            return `${Math.floor(hours / 24)}d ago`;
+        }
+
+        function Tooltip({ label, tip }) {
+            return (
+                <span className="tooltip-wrap">
+                    <span className="form-label" style={{ marginBottom: 0 }}>{label}</span>
+                    <span className="tooltip-icon">?</span>
+                    <span className="tooltip-text">{tip}</span>
+                </span>
+            );
+        }
+
+        function StateBadge({ state }) {
+            return <span className={`state-badge ${state.toLowerCase()}`}>{STATE_LABELS[state] || state}</span>;
+        }
+
+        /* ── Toast ── */
+        function useToast() {
+            const [toasts, setToasts] = useState([]);
+            const showToast = useCallback((title, message, type = 'info') => {
+                const id = Date.now();
+                setToasts(prev => [...prev, { id, title, message, type }]);
+                setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
+            }, []);
+            return { toasts, showToast };
+        }
+
+        function ToastContainer({ toasts }) {
+            const icons = { success: '✓', error: '✕', info: 'ℹ' };
+            return (
+                <div className="toast-container">
+                    {toasts.map(t => (
+                        <div key={t.id} className={`toast ${t.type}`}>
+                            <div className="toast-icon">{icons[t.type]}</div>
+                            <div className="toast-content">
+                                <div className="toast-title">{t.title}</div>
+                                <div className="toast-message">{t.message}</div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+
+        /* ══════════════════════════════════════════════════════════
+           DASHBOARD
+           ══════════════════════════════════════════════════════════ */
+        function DashboardPage({ showToast, onNavigate }) {
+            const [stats, setStats] = useState(null);
+            const [activity, setActivity] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                const load = async () => {
+                    try {
+                        setLoading(true);
+                        const [dash, act] = await Promise.all([
+                            apiCall('GET', '/dashboard'),
+                            apiCall('GET', '/activity?limit=8')
+                        ]);
+                        setStats(dash);
+                        setActivity(act.activities || []);
+                    } catch { showToast('Oops', 'Could not load dashboard', 'error'); }
+                    finally { setLoading(false); }
+                };
+                load();
+                const iv = setInterval(load, 5000);
+                return () => clearInterval(iv);
+            }, []);
+
+            if (loading || !stats) return (
+                <div className="content"><div className="content-inner">
+                    {[1,2,3].map(i => <div key={i} className="skeleton-card"><div className="skeleton skeleton-line" style={{marginBottom:12}}/><div className="skeleton skeleton-line" style={{width:'60%'}}/></div>)}
+                </div></div>
+            );
+
+            const allStates = ['RECEIVED','ANALYZING','PLANNING','CODING','REVIEWING','TESTING','DEPLOYING','VERIFYING','DONE','FAILED'];
+            const stateData = allStates.map(s => stats.stories_by_state?.[s] || 0);
+            const maxCount = Math.max(...stateData, 1);
+            const isEmpty = (stats.active_stories || 0) === 0 && activity.length === 0;
+
+            return (
+                <div className="content"><div className="content-inner">
+                    <div className="page-title">Stats</div>
+                    <div className="page-subtitle">Summary of your development requests</div>
+
+                    {isEmpty && (
+                        <div className="welcome-banner">
+                            <div className="welcome-title">Welcome to DevAgent!</div>
+                            <div className="welcome-desc">
+                                Your AI development assistant is ready to help. Submit a request and the agent will analyze, plan, write code, test, and deploy it for you.
+                            </div>
+                            <div className="welcome-steps">
+                                <div className="welcome-step">
+                                    <div className="welcome-step-num">1</div>
+                                    <div className="welcome-step-text">Describe what you need</div>
+                                </div>
+                                <div className="welcome-step">
+                                    <div className="welcome-step-num">2</div>
+                                    <div className="welcome-step-text">The agent plans & builds it</div>
+                                </div>
+                                <div className="welcome-step">
+                                    <div className="welcome-step-num">3</div>
+                                    <div className="welcome-step-text">Review & approve changes</div>
+                                </div>
+                            </div>
+                            <button className="btn btn-primary" style={{marginTop: 20}} onClick={() => onNavigate('submit')}>
+                                + Create Your First Request
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Stats */}
+                    <div className="stats-grid">
+                        <div className="stat-card">
+                            <div className="stat-card-icon">📂</div>
+                            <div className="stat-card-value">{stats.active_stories || 0}</div>
+                            <div className="stat-card-label">Active Requests</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-card-icon">🔔</div>
+                            <div className="stat-card-value">{stats.pending_approvals || 0}</div>
+                            <div className="stat-card-label">Waiting for You</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-card-icon">✅</div>
+                            <div className="stat-card-value">{stats.completed_today || 0}</div>
+                            <div className="stat-card-label">Done Today</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-card-icon">💰</div>
+                            <div className="stat-card-value">${(stats.total_cost_today_usd || 0).toFixed(2)}</div>
+                            <div className="stat-card-label">Cost Today</div>
+                        </div>
+                    </div>
+
+                    {/* Chart */}
+                    <div className="chart-card">
+                        <div className="chart-title">Requests by Status</div>
+                        <div className="chart-bars">
+                            {allStates.map((s, i) => (
+                                <div key={s} className="chart-bar-group">
+                                    <div className="chart-value">{stateData[i]}</div>
+                                    <div className="chart-bar" style={{ height: `${(stateData[i] / maxCount) * 100}px`, background: STATE_COLORS[s] }} />
+                                    <div className="chart-label">{STATE_LABELS[s]}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Recent Activity */}
+                    <div className="card">
+                        <div className="section-title">Recent Activity</div>
+                        {activity.length === 0 ? (
+                            <div style={{textAlign:'center',color:'#94a3b8',padding:24}}>No activity yet. Create a request to get started!</div>
+                        ) : activity.map((item, idx) => (
+                            <div key={idx} className="activity-item">
+                                <div className="activity-icon">{ACTIVITY_ICONS[item.type] || '•'}</div>
+                                <div className="activity-content">
+                                    <div className="activity-title">{item.title}</div>
+                                    <div className="activity-detail">{item.detail}</div>
+                                    <div className="activity-time">
+                                        {item.story_id && <a className="activity-link" href="#" onClick={e => e.preventDefault()}>{item.story_id}</a>}
+                                        {' '}{relativeTime(item.timestamp)}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div></div>
+            );
+        }
+
+        /* ══════════════════════════════════════════════════════════
+           NEW REQUEST (formerly Submit Instruction)
+           ══════════════════════════════════════════════════════════ */
+        function NewRequestPage({ showToast }) {
+            const [type, setType] = useState('user_story');
+            const [title, setTitle] = useState('');
+            const [description, setDescription] = useState('');
+            const [criteria, setCriteria] = useState([]);
+            const [priority, setPriority] = useState('medium');
+            const [targetFiles, setTargetFiles] = useState([]);
+            const [targetFileInput, setTargetFileInput] = useState('');
+            const [tags, setTags] = useState([]);
+            const [tagInput, setTagInput] = useState('');
+            const [advancedOpen, setAdvancedOpen] = useState(false);
+            const [projectId, setProjectId] = useState('');
+            const [maxIterations, setMaxIterations] = useState(10);
+            const [costBudget, setCostBudget] = useState(5.00);
+            const [targetBranch, setTargetBranch] = useState('');
+            const [context, setContext] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [submitSuccess, setSubmitSuccess] = useState(null);
+            const [projects, setProjects] = useState([]);
+            const [showCreateProject, setShowCreateProject] = useState(false);
+            const [newProjName, setNewProjName] = useState('');
+            const [newProjDesc, setNewProjDesc] = useState('');
+            const [newProjColor, setNewProjColor] = useState('#6366f1');
+            const projColors = ['#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6','#8b5cf6','#ef4444','#06b6d4'];
+
+            useEffect(() => {
+                apiCall('GET', '/projects').then(setProjects).catch(() => {});
+            }, []);
+
+            const handleCreateProject = async () => {
+                if (!newProjName.trim()) { showToast('Missing Name', 'Please enter a project name', 'error'); return; }
+                try {
+                    const p = await apiCall('POST', '/projects', { name: newProjName.trim(), description: newProjDesc.trim(), color: newProjColor });
+                    setProjects([...projects, p]);
+                    setProjectId(p.id);
+                    setShowCreateProject(false);
+                    setNewProjName(''); setNewProjDesc(''); setNewProjColor('#6366f1');
+                    showToast('Created', `Project "${p.name}" created`, 'success');
+                } catch { showToast('Error', 'Failed to create project', 'error'); }
+            };
+
+            const typeOptions = [
+                { value: 'user_story', icon: '📝', label: 'New Feature' },
+                { value: 'code_change', icon: '✏️', label: 'Code Change' },
+                { value: 'bug_fix', icon: '🐛', label: 'Fix a Bug' },
+                { value: 'refactor', icon: '🔧', label: 'Improve Code' },
+                { value: 'feature', icon: '⭐', label: 'Enhancement' },
+                { value: 'custom', icon: '🎯', label: 'Other' }
+            ];
+
+            const addCriteria = () => setCriteria([...criteria, { description: '', given: '', when: '', then: '' }]);
+            const updateCriteria = (idx, field, value) => { const u = [...criteria]; u[idx][field] = value; setCriteria(u); };
+            const removeCriteria = idx => setCriteria(criteria.filter((_, i) => i !== idx));
+            const addTargetFile = () => { if (targetFileInput.trim()) { setTargetFiles([...targetFiles, targetFileInput.trim()]); setTargetFileInput(''); } };
+            const removeTargetFile = idx => setTargetFiles(targetFiles.filter((_, i) => i !== idx));
+            const addTag = () => { if (tagInput.trim()) { setTags([...tags, tagInput.trim()]); setTagInput(''); } };
+            const removeTag = idx => setTags(tags.filter((_, i) => i !== idx));
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                if (!projectId) { showToast('Missing Project', 'Please select a project for this request', 'error'); return; }
+                if (!title.trim() || !description.trim()) { showToast('Missing Info', 'Please fill in the title and description', 'error'); return; }
+                try {
+                    setLoading(true);
+                    const result = await apiCall('POST', '/instructions', {
+                        type, title, description,
+                        acceptance_criteria: criteria,
+                        priority,
+                        project_id: projectId || undefined,
+                        target_files: targetFiles,
+                        constraints: { max_iterations: maxIterations, cost_budget_usd: costBudget, target_branch: targetBranch || undefined },
+                        context: context || undefined, tags
+                    });
+                    setSubmitSuccess(result.instruction_id);
+                    showToast('Request Submitted!', 'Your request is now being processed', 'success');
+                    setTitle(''); setDescription(''); setCriteria([]); setType('user_story');
+                    setPriority('medium'); setTargetFiles([]); setTags([]);
+                    setProjectId(''); setCostBudget(5.00); setMaxIterations(10); setTargetBranch(''); setContext('');
+                    setTimeout(() => setSubmitSuccess(null), 6000);
+                } catch { showToast('Error', 'Something went wrong. Please try again.', 'error'); }
+                finally { setLoading(false); }
+            };
+
+            return (
+                <div className="content"><div className="content-inner">
+                    <div className="page-title">New Request</div>
+                    <div className="page-subtitle">Tell the agent what you'd like it to build or fix</div>
+
+                    {submitSuccess && (
+                        <div className="success-banner">
+                            <span style={{fontSize:20}}>🎉</span>
+                            <div><strong>Request submitted!</strong> Tracking ID: <code style={{fontFamily:'monospace',fontSize:12}}>{submitSuccess}</code></div>
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSubmit}>
+                        {/* Project Selector */}
+                        <div className="form-group">
+                            <label className="form-label">Project <span style={{color:'#ef4444'}}>*</span></label>
+                            <span className="form-hint">Select an existing project or create a new one</span>
+
+                            {/* Project chips: select or create */}
+                            <div className="project-selector">
+                                {projects.map(p => (
+                                    <div key={p.id} className={`project-chip ${projectId === p.id ? 'selected' : ''}`} onClick={() => { setProjectId(p.id); setShowCreateProject(false); }}>
+                                        <span className="project-chip-dot" style={{background: p.color || '#6366f1'}}></span>
+                                        {p.name}
+                                    </div>
+                                ))}
+                                <div className={`project-chip ${showCreateProject ? 'selected' : ''}`} style={{borderStyle:'dashed',color: showCreateProject ? '#4f46e5' : '#94a3b8'}} onClick={() => setShowCreateProject(!showCreateProject)}>+ Create New</div>
+                            </div>
+
+                            {/* Inline create project form */}
+                            {showCreateProject && (
+                                <div style={{marginTop:12,padding:16,background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:10}}>
+                                    <div style={{fontSize:14,fontWeight:600,marginBottom:12,color:'#1e293b'}}>Create a New Project</div>
+                                    <div style={{marginBottom:10}}>
+                                        <label style={{fontSize:12,fontWeight:500,color:'#475569',display:'block',marginBottom:4}}>Project Name <span style={{color:'#ef4444'}}>*</span></label>
+                                        <input type="text" className="form-input" placeholder="e.g., Mobile App, Backend API, Landing Page" value={newProjName} onChange={e => setNewProjName(e.target.value)} autoFocus />
+                                    </div>
+                                    <div style={{marginBottom:10}}>
+                                        <label style={{fontSize:12,fontWeight:500,color:'#475569',display:'block',marginBottom:4}}>Description</label>
+                                        <input type="text" className="form-input" placeholder="Optional — briefly describe this project" value={newProjDesc} onChange={e => setNewProjDesc(e.target.value)} />
+                                    </div>
+                                    <div style={{marginBottom:12}}>
+                                        <label style={{fontSize:12,fontWeight:500,color:'#475569',display:'block',marginBottom:6}}>Color</label>
+                                        <div className="color-picker">
+                                            {projColors.map(c => (
+                                                <div key={c} className={`color-swatch ${newProjColor === c ? 'selected' : ''}`} style={{background:c}} onClick={() => setNewProjColor(c)}></div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div style={{display:'flex',gap:8}}>
+                                        <button type="button" className="btn btn-primary btn-sm" onClick={handleCreateProject}>Create Project</button>
+                                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowCreateProject(false)}>Cancel</button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {projects.length === 0 && !showCreateProject && (
+                                <div style={{padding:'12px',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:8,marginTop:8,fontSize:13,color:'#92400e'}}>
+                                    No projects yet — click "+ Create New" above to get started.
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Type */}
+                        <div className="form-group">
+                            <label className="form-label">What kind of work is this?</label>
+                            <div className="type-grid">
+                                {typeOptions.map(t => (
+                                    <div key={t.value} className={`type-card ${type === t.value ? 'selected' : ''}`} onClick={() => setType(t.value)}>
+                                        <div className="type-card-icon">{t.icon}</div>
+                                        <div className="type-card-label">{t.label}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Title */}
+                        <div className="form-group">
+                            <label className="form-label">Title</label>
+                            <span className="form-hint">A short summary of what you need (e.g., "Add a search bar to the homepage")</span>
+                            <input type="text" className="form-input" placeholder="What do you need?" value={title} onChange={e => setTitle(e.target.value)} />
+                        </div>
+
+                        {/* Description */}
+                        <div className="form-group">
+                            <label className="form-label">Description</label>
+                            <span className="form-hint">Describe in detail what the agent should do. The more context you give, the better the result.</span>
+                            <textarea className="form-textarea" placeholder="Describe what you'd like built or changed..." value={description} onChange={e => setDescription(e.target.value)} style={{minHeight:120}} />
+                        </div>
+
+                        {/* Priority */}
+                        <div className="form-group">
+                            <label className="form-label">How urgent is this?</label>
+                            <div className="priority-row">
+                                {[
+                                    { v: 'low', l: 'Low' },
+                                    { v: 'medium', l: 'Medium' },
+                                    { v: 'high', l: 'High' },
+                                    { v: 'critical', l: 'Urgent' }
+                                ].map(p => (
+                                    <div key={p.v} className={`priority-pill ${p.v} ${priority === p.v ? 'selected' : ''}`} onClick={() => setPriority(p.v)}>{p.l}</div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Success Criteria — optional, user-friendly */}
+                        <div className="form-group">
+                            <label className="form-label">How will you know it's done right?</label>
+                            <span className="form-hint">Optional — add simple checks so the agent knows what "done" looks like. Think of these as a checklist.</span>
+
+                            {criteria.length === 0 && (
+                                <div style={{marginTop:8,padding:14,background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8}}>
+                                    <div style={{fontSize:13,color:'#166534',fontWeight:500,marginBottom:6}}>Examples of good checks:</div>
+                                    <div style={{fontSize:12,color:'#15803d',lineHeight:1.6}}>
+                                        <span style={{display:'block'}}>The homepage loads in under 3 seconds</span>
+                                        <span style={{display:'block'}}>Users can sign up with their email address</span>
+                                        <span style={{display:'block'}}>The search bar returns results when I type a keyword</span>
+                                        <span style={{display:'block'}}>The button color changes to blue</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {criteria.map((crit, idx) => (
+                                <CriteriaItem key={idx} criterion={crit}
+                                    onUpdate={(f, v) => updateCriteria(idx, f, v)}
+                                    onRemove={() => removeCriteria(idx)} />
+                            ))}
+                            <button type="button" className="btn btn-secondary btn-sm" style={{marginTop:4}} onClick={addCriteria}>+ Add a check</button>
+                        </div>
+
+                        {/* Tags */}
+                        <div className="form-group">
+                            <Tooltip label="Labels" tip="Add labels to organize and find your requests later. For example: 'homepage', 'backend', 'urgent'." />
+                            <div style={{display:'flex',gap:8,marginBottom:8,marginTop:6}}>
+                                <input type="text" className="form-input" placeholder="Type a label and press Enter" value={tagInput}
+                                    onChange={e => setTagInput(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }} />
+                                <button type="button" className="btn btn-secondary btn-sm" onClick={addTag}>Add</button>
+                            </div>
+                            <div className="tags-row">
+                                {tags.map((tag, idx) => (
+                                    <div key={idx} className="tag">{tag}<span className="tag-remove" onClick={() => removeTag(idx)}>×</span></div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Advanced */}
+                        <div className="collapse-header" onClick={() => setAdvancedOpen(!advancedOpen)}>
+                            <span>Advanced Options (for power users)</span>
+                            <span className={`collapse-arrow ${advancedOpen ? 'open' : ''}`}>▼</span>
+                        </div>
+                        <div className={`collapse-body ${advancedOpen ? 'open' : ''}`}>
+                            <div className="form-group">
+                                <Tooltip label="Specific Files to Change" tip="If you know which files need to be changed, list them here. The agent will figure it out if you leave this blank." />
+                                <div style={{display:'flex',gap:8,marginBottom:8,marginTop:6}}>
+                                    <input type="text" className="form-input" placeholder="e.g., src/components/Header.jsx" value={targetFileInput}
+                                        onChange={e => setTargetFileInput(e.target.value)}
+                                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTargetFile(); } }} />
+                                    <button type="button" className="btn btn-secondary btn-sm" onClick={addTargetFile}>Add</button>
+                                </div>
+                                <div className="tags-row">
+                                    {targetFiles.map((f, idx) => (
+                                        <div key={idx} className="tag">{f}<span className="tag-remove" onClick={() => removeTargetFile(idx)}>×</span></div>
+                                    ))}
+                                </div>
+                            </div>
+                            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+                                <div className="form-group">
+                                    <Tooltip label="Max Attempts" tip="How many times the agent can retry if something doesn't work. Default is 10." />
+                                    <input type="number" className="form-input" min="1" max="100" value={maxIterations} onChange={e => setMaxIterations(parseInt(e.target.value))} style={{marginTop:6}} />
+                                </div>
+                                <div className="form-group">
+                                    <Tooltip label="Spending Limit ($)" tip="Maximum amount in USD the agent can spend on AI calls for this request." />
+                                    <input type="number" className="form-input" step="0.01" min="0" value={costBudget} onChange={e => setCostBudget(parseFloat(e.target.value))} style={{marginTop:6}} />
+                                </div>
+                            </div>
+                            <div className="form-group">
+                                <Tooltip label="Target Branch" tip="The git branch where changes should be made. Leave blank to use the default branch." />
+                                <input type="text" className="form-input" placeholder="e.g., main (leave blank for default)" value={targetBranch} onChange={e => setTargetBranch(e.target.value)} style={{marginTop:6}} />
+                            </div>
+                            <div className="form-group">
+                                <Tooltip label="Additional Context" tip="Any extra information that might help the agent, like links, background info, or constraints." />
+                                <textarea className="form-textarea" placeholder="Anything else the agent should know..." value={context} onChange={e => setContext(e.target.value)} style={{minHeight:80,marginTop:6}} />
+                            </div>
+                        </div>
+
+                        <button type="submit" className="btn btn-primary btn-full" disabled={loading} style={{padding:'14px',fontSize:15,fontWeight:700}}>
+                            {loading ? '⏳ Submitting...' : '🚀 Submit Request'}
+                        </button>
+                    </form>
+                </div></div>
+            );
+        }
+
+        function CriteriaItem({ criterion, onUpdate, onRemove }) {
+            const [detailsOpen, setDetailsOpen] = useState(false);
+            return (
+                <div style={{marginBottom:10,background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:14,display:'flex',gap:10,alignItems:'flex-start'}}>
+                    <span style={{color:'#6366f1',fontSize:16,marginTop:6,flexShrink:0}}>✓</span>
+                    <div style={{flex:1}}>
+                        <input type="text" className="form-input" placeholder="e.g., Users can search products by name" value={criterion.description} onChange={e => onUpdate('description', e.target.value)} style={{fontWeight:500}} />
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:6}}>
+                            <span style={{fontSize:12,color:'#94a3b8',cursor:'pointer',userSelect:'none'}} onClick={() => setDetailsOpen(!detailsOpen)}>
+                                {detailsOpen ? '▾ Hide details' : '▸ Add more detail (optional)'}
+                            </span>
+                            <span style={{fontSize:12,color:'#ef4444',cursor:'pointer'}} onClick={onRemove}>Remove</span>
+                        </div>
+                        {detailsOpen && (
+                            <div style={{marginTop:8,display:'flex',flexDirection:'column',gap:6}}>
+                                <div>
+                                    <label style={{fontSize:11,color:'#64748b',fontWeight:500}}>Starting situation</label>
+                                    <input type="text" className="form-input" placeholder="e.g., I'm on the homepage" value={criterion.given} onChange={e => onUpdate('given', e.target.value)} />
+                                </div>
+                                <div>
+                                    <label style={{fontSize:11,color:'#64748b',fontWeight:500}}>What I do</label>
+                                    <input type="text" className="form-input" placeholder="e.g., I type 'shoes' in the search bar and press Enter" value={criterion.when} onChange={e => onUpdate('when', e.target.value)} />
+                                </div>
+                                <div>
+                                    <label style={{fontSize:11,color:'#64748b',fontWeight:500}}>What should happen</label>
+                                    <input type="text" className="form-input" placeholder="e.g., I see a list of shoe products" value={criterion.then} onChange={e => onUpdate('then', e.target.value)} />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        /* ══════════════════════════════════════════════════════════
+           MY REQUESTS (formerly Active Stories)
+           ══════════════════════════════════════════════════════════ */
+        function MyRequestsPage({ showToast }) {
+            const [stories, setStories] = useState([]);
+            const [expandedId, setExpandedId] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [projects, setProjects] = useState([]);
+            const [filterProject, setFilterProject] = useState('');
+
+            useEffect(() => {
+                apiCall('GET', '/projects').then(setProjects).catch(() => {});
+            }, []);
+
+            useEffect(() => {
+                const load = async () => {
+                    try {
+                        setLoading(true);
+                        const query = filterProject ? `/instructions?state=&project_id=${filterProject}` : '/instructions?state=';
+                        const data = await apiCall('GET', query);
+                        setStories(Array.isArray(data) ? data : data.instructions || []);
+                    } catch { showToast('Error', 'Could not load requests', 'error'); }
+                    finally { setLoading(false); }
+                };
+                load();
+                const iv = setInterval(load, 3000);
+                return () => clearInterval(iv);
+            }, [filterProject]);
+
+            return (
+                <div className="content"><div className="content-inner">
+                    <div className="page-title">My Requests</div>
+                    <div className="page-subtitle">Track progress on everything you've asked the agent to do</div>
+
+                    {projects.length > 0 && (
+                        <div className="project-filter-bar">
+                            <span style={{fontSize:12,color:'#94a3b8',fontWeight:500}}>Filter:</span>
+                            <div className={`project-filter-chip ${filterProject === '' ? 'active' : ''}`} onClick={() => setFilterProject('')}>All</div>
+                            {projects.map(p => (
+                                <div key={p.id} className={`project-filter-chip ${filterProject === p.id ? 'active' : ''}`} onClick={() => setFilterProject(p.id)}>
+                                    <span style={{width:6,height:6,borderRadius:'50%',background:p.color||'#6366f1'}}></span>
+                                    {p.name}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {loading && stories.length === 0 ? (
+                        [1,2,3].map(i => <div key={i} className="skeleton-card"><div className="skeleton skeleton-line" style={{marginBottom:12}}/><div className="skeleton skeleton-line" style={{width:'80%'}}/></div>)
+                    ) : stories.length === 0 ? (
+                        <div className="empty-state">
+                            <div className="empty-icon">📭</div>
+                            <div className="empty-title">No requests yet</div>
+                            <div className="empty-desc">When you submit a request, it will appear here so you can track its progress in real time.</div>
+                        </div>
+                    ) : stories.map(story => (
+                        <StoryCard key={story.instruction_id} story={story}
+                            expanded={expandedId === story.instruction_id}
+                            onToggle={() => setExpandedId(expandedId === story.instruction_id ? null : story.instruction_id)}
+                            showToast={showToast} />
+                    ))}
+                </div></div>
+            );
+        }
+
+        function StoryCard({ story, expanded, onToggle, showToast }) {
+            const [details, setDetails] = useState(null);
+            const [detailLoading, setDetailLoading] = useState(false);
+
+            useEffect(() => {
+                if (expanded && !details) {
+                    (async () => {
+                        try { setDetailLoading(true); setDetails(await apiCall('GET', `/stories/${story.instruction_id}/detail`)); }
+                        catch { showToast('Error', 'Could not load details', 'error'); }
+                        finally { setDetailLoading(false); }
+                    })();
+                }
+            }, [expanded, story.instruction_id]);
+
+            return (
+                <div className="story-card">
+                    <div className="story-header" onClick={onToggle} style={{cursor:'pointer'}}>
+                        <div style={{flex:1}}>
+                            <div className="story-id">{story.instruction_id}</div>
+                            <div className="story-title">{story.title || 'Untitled Request'}</div>
+                            <div className="story-meta">
+                                <span>📅 {new Date(story.submitted_at).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                        <div className="story-badges">
+                            <StateBadge state={story.state} />
+                            <span style={{opacity:expanded?1:0.4,transition:'transform 0.2s',transform:expanded?'rotate(180deg)':'rotate(0)',fontSize:12}}>▼</span>
+                        </div>
+                    </div>
+                    {expanded && (
+                        <div className="story-expanded">
+                            {detailLoading ? <div style={{padding:24,textAlign:'center',color:'#94a3b8'}}>Loading details...</div>
+                                : details ? <StoryDetails story={details} showToast={showToast} /> : null}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function StoryDetails({ story, showToast }) {
+            const allStates = ['RECEIVED','ANALYZING','PLANNING','CODING','REVIEWING','TESTING','DEPLOYING','VERIFYING','DONE'];
+            const currentIdx = allStates.indexOf(story.state);
+            const isFailed = story.state === 'FAILED';
+
+            return (
+                <>
+                    {/* Progress Pipeline */}
+                    <div className="pipeline">
+                        {allStates.map((s, idx) => (
+                            <React.Fragment key={s}>
+                                <div className="pipeline-step">
+                                    <div className={`pipeline-dot ${idx < currentIdx ? 'completed' : ''} ${s === story.state ? (isFailed ? 'failed' : 'active') : ''}`}>
+                                        {idx < currentIdx ? '✓' : idx + 1}
+                                    </div>
+                                    <div className="pipeline-label">{STATE_LABELS[s]}</div>
+                                </div>
+                                {idx < allStates.length - 1 && <div className={`pipeline-line ${idx < currentIdx ? 'completed' : ''}`} />}
+                            </React.Fragment>
+                        ))}
+                    </div>
+
+                    {story.plan && story.plan.length > 0 && (
+                        <>
+                            <div className="section-title">Plan</div>
+                            {story.plan.map((item, idx) => (
+                                <div key={idx} className="plan-item">
+                                    <div className="plan-action-badge">{item.action_type || 'task'}</div>
+                                    <div className="plan-desc">{item.description}</div>
+                                    {item.target_file && <div className="plan-target">📄 {item.target_file}</div>}
+                                </div>
+                            ))}
+                        </>
+                    )}
+
+                    {story.iterations && story.iterations.length > 0 && (
+                        <>
+                            <div className="section-title">Work Rounds ({story.iterations.length})</div>
+                            {story.iterations.map((iter, idx) => <IterationItem key={idx} iteration={iter} index={idx + 1} />)}
+                        </>
+                    )}
+
+                    {story.file_changes && story.file_changes.length > 0 && (
+                        <>
+                            <div className="section-title">Files Changed</div>
+                            {story.file_changes.map((c, idx) => <FileChangeItem key={idx} change={c} />)}
+                        </>
+                    )}
+
+                    {story.test_results && (
+                        <>
+                            <div className="section-title">Test Results</div>
+                            <TestResults results={story.test_results} />
+                        </>
+                    )}
+
+                    {story.review_results && story.review_results.length > 0 && (
+                        <>
+                            <div className="section-title">Review Notes</div>
+                            {story.review_results.map((issue, idx) => (
+                                <div key={idx} className={`review-issue ${issue.severity}`}>
+                                    <div className={`review-sev ${issue.severity}`}>{issue.severity}</div>
+                                    <div className="review-msg">{issue.message}</div>
+                                </div>
+                            ))}
+                        </>
+                    )}
+
+                    <div style={{marginTop:20,display:'flex',gap:8,flexWrap:'wrap'}}>
+                        {['CODING','REVIEWING','TESTING'].includes(story.state) && (
+                            <>
+                                <button className="btn btn-secondary btn-sm">⏸ Pause</button>
+                                <button className="btn btn-secondary btn-sm">✕ Cancel</button>
+                            </>
+                        )}
+                        {story.state === 'FAILED' && <button className="btn btn-primary btn-sm">🔄 Retry</button>}
+                    </div>
+                </>
+            );
+        }
+
+        function IterationItem({ iteration, index }) {
+            const [open, setOpen] = useState(false);
+            return (
+                <div className="iter-item">
+                    <div className="iter-header" onClick={() => setOpen(!open)}>
+                        <div className="iter-title">Round {index}</div>
+                        <span style={{transition:'transform 0.2s',transform:open?'rotate(180deg)':'rotate(0)',fontSize:12}}>▼</span>
+                    </div>
+                    {open && (
+                        <div className="iter-body">
+                            {iteration.changes && iteration.changes.length > 0 && (
+                                <>{iteration.changes.map((c, i) => <FileChangeItem key={i} change={c} />)}</>
+                            )}
+                            {iteration.test_results && <TestResults results={iteration.test_results} />}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function FileChangeItem({ change }) {
+            const [open, setOpen] = useState(false);
+            return (
+                <div className="file-change">
+                    <div className="file-change-header" onClick={() => setOpen(!open)}>
+                        <div style={{flex:1}}>
+                            <span className={`file-type-badge ${change.change_type}`}>{change.change_type}</span>
+                            <div className="file-path" style={{marginTop:4}}>{change.file_path}</div>
+                        </div>
+                        <span style={{transition:'transform 0.2s',transform:open?'rotate(180deg)':'rotate(0)',fontSize:12}}>▼</span>
+                    </div>
+                    {open && change.diff && (
+                        <div className="diff-view">
+                            {change.diff.split('\n').map((line, idx) => (
+                                <div key={idx} className={`diff-line ${line.startsWith('+') ? 'added' : line.startsWith('-') ? 'removed' : ''}`}>
+                                    <span className="diff-line-num">{idx + 1}</span>
+                                    <span className="diff-marker">{line[0] === '+' ? '+' : line[0] === '-' ? '-' : ' '}</span>
+                                    <span className="diff-content">{line.slice(1)}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function TestResults({ results }) {
+            const passed = results.passed_count || 0;
+            const failed = results.failed_count || 0;
+            const total = passed + failed;
+            return (
+                <>
+                    <div className="test-summary">
+                        <div className="test-counts">
+                            <span style={{color:'#22c55e',fontWeight:600}}>✓ Passed: {passed}</span>
+                            <span style={{color:'#ef4444',fontWeight:600}}>✕ Failed: {failed}</span>
+                        </div>
+                        {total > 0 && (
+                            <div className="test-bar">
+                                <div className="test-bar-pass" style={{width:`${(passed/total)*100}%`}} />
+                                <div className="test-bar-fail" style={{width:`${(failed/total)*100}%`}} />
+                            </div>
+                        )}
+                    </div>
+                    {results.failures && results.failures.map((f, i) => (
+                        <div key={i} className="test-failure">
+                            <div className="test-name">{f.name}</div>
+                            <div className="test-error">{f.error}</div>
+                        </div>
+                    ))}
+                </>
+            );
+        }
+
+        /* ══════════════════════════════════════════════════════════
+           APPROVALS
+           ══════════════════════════════════════════════════════════ */
+        function ApprovalsPage({ showToast }) {
+            const [approvals, setApprovals] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                const load = async () => {
+                    try { setLoading(true); const d = await apiCall('GET', '/approvals/pending'); setApprovals(Array.isArray(d) ? d : d.approvals || []); }
+                    catch { showToast('Error', 'Could not load approvals', 'error'); }
+                    finally { setLoading(false); }
+                };
+                load();
+                const iv = setInterval(load, 5000);
+                return () => clearInterval(iv);
+            }, []);
+
+            if (loading) return (
+                <div className="content"><div className="content-inner">
+                    <div className="page-title">Review & Approve</div>
+                    {[1,2].map(i => <div key={i} className="skeleton-card"><div className="skeleton skeleton-line" style={{marginBottom:12}}/><div className="skeleton skeleton-line" style={{width:'60%'}}/></div>)}
+                </div></div>
+            );
+
+            return (
+                <div className="content"><div className="content-inner">
+                    <div className="page-title">
+                        Review & Approve
+                        {approvals.length > 0 && <span className="notif-badge" style={{marginLeft:10,verticalAlign:'middle'}}>{approvals.length}</span>}
+                    </div>
+                    <div className="page-subtitle">The agent needs your go-ahead before continuing with these items</div>
+
+                    {approvals.length === 0 ? (
+                        <div className="empty-state">
+                            <div className="empty-icon">✅</div>
+                            <div className="empty-title">All clear!</div>
+                            <div className="empty-desc">Nothing needs your approval right now. When the agent reaches a decision point, it will ask you here.</div>
+                        </div>
+                    ) : approvals.map((a, i) => <ApprovalCard key={i} approval={a} showToast={showToast} />)}
+                </div></div>
+            );
+        }
+
+        function ApprovalCard({ approval, showToast }) {
+            const [action, setAction] = useState(null);
+            const [comment, setComment] = useState('');
+            const [submitting, setSubmitting] = useState(false);
+
+            const gateLabels = { pre_code: 'Before Coding', pre_deploy: 'Before Deploying', pre_production: 'Before Going Live', budget_exceeded: 'Budget Limit Reached', ambiguity_detected: 'Needs Clarification' };
+            const gateColors = { pre_code: '#3b82f6', pre_deploy: '#f97316', pre_production: '#ef4444', budget_exceeded: '#d97706', ambiguity_detected: '#8b5cf6' };
+
+            const handleSubmit = async () => {
+                try {
+                    setSubmitting(true);
+                    await apiCall('POST', `/approvals/${approval.story_id}/${approval.gate_name}`, { decision: action, comment, decided_by: 'user' });
+                    showToast('Done', `You ${action}d this step`, 'success');
+                } catch { showToast('Error', 'Could not submit your decision', 'error'); }
+                finally { setSubmitting(false); setAction(null); setComment(''); }
+            };
+
+            return (
+                <div className="approval-card">
+                    <div className="approval-header">
+                        <div>
+                            <div className="approval-story-id">{approval.story_id}</div>
+                            <div className="approval-title">{approval.story_title}</div>
+                        </div>
+                        <span className="gate-badge" style={{background: gateColors[approval.gate_name] || '#64748b'}}>
+                            {gateLabels[approval.gate_name] || approval.gate_name.replace(/_/g, ' ')}
+                        </span>
+                    </div>
+                    <div className="approval-meta">
+                        <span>🕐 {relativeTime(approval.requested_at)}</span>
+                        <StateBadge state={approval.story_state} />
+                    </div>
+                    {approval.context && (
+                        <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:8,padding:12,marginBottom:12,fontSize:13,color:'#334155'}}>{approval.context}</div>
+                    )}
+                    {!action ? (
+                        <div className="approval-actions">
+                            <button className="btn btn-success" style={{flex:1}} onClick={() => setAction('approve')}>✓ Approve</button>
+                            <button className="btn btn-danger" style={{flex:1}} onClick={() => setAction('reject')}>✕ Reject</button>
+                        </div>
+                    ) : (
+                        <div style={{marginTop:12}}>
+                            <textarea className="form-textarea" placeholder="Add a note (optional)" value={comment} onChange={e => setComment(e.target.value)} style={{minHeight:70}} />
+                            <div style={{display:'flex',gap:8,marginTop:10}}>
+                                <button className="btn btn-primary" style={{flex:1}} onClick={handleSubmit} disabled={submitting}>{submitting ? 'Sending...' : 'Confirm'}</button>
+                                <button className="btn btn-secondary" onClick={() => { setAction(null); setComment(''); }}>Cancel</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        /* ══════════════════════════════════════════════════════════
+           ACTIVITY LOG
+           ══════════════════════════════════════════════════════════ */
+        function ActivityPage({ showToast }) {
+            const [activities, setActivities] = useState([]);
+            const [typeFilter, setTypeFilter] = useState('');
+            const [storyFilter, setStoryFilter] = useState('');
+            const [dateFilter, setDateFilter] = useState('all');
+            const [loading, setLoading] = useState(true);
+            const [offset, setOffset] = useState(0);
+
+            useEffect(() => {
+                (async () => {
+                    try {
+                        setLoading(true);
+                        const p = new URLSearchParams();
+                        if (typeFilter) p.append('type', typeFilter);
+                        if (storyFilter) p.append('story_id', storyFilter);
+                        p.append('limit', '50'); p.append('offset', offset);
+                        const d = await apiCall('GET', `/activity?${p}`);
+                        setActivities(Array.isArray(d) ? d : d.activities || []);
+                    } catch { showToast('Error', 'Could not load activity', 'error'); }
+                    finally { setLoading(false); }
+                })();
+            }, [typeFilter, storyFilter, dateFilter, offset]);
+
+            const typeLabels = {
+                instruction_submitted: 'Request Submitted', state_changed: 'Status Changed', approval_requested: 'Approval Needed',
+                approval_decided: 'Approval Given', iteration_started: 'Work Started', iteration_completed: 'Work Round Done',
+                error_occurred: 'Error', story_completed: 'Completed', story_failed: 'Failed',
+                file_changed: 'File Changed', test_run: 'Tests Run', code_reviewed: 'Code Reviewed', human_feedback: 'Feedback'
+            };
+
+            return (
+                <div className="content"><div className="content-inner">
+                    <div className="page-title">Activity Log</div>
+                    <div className="page-subtitle">Everything that's happened across all your requests</div>
+
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))',gap:12,marginBottom:24}}>
+                        <div>
+                            <label className="form-label">Filter by Type</label>
+                            <select className="form-select" value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setOffset(0); }}>
+                                <option value="">All Events</option>
+                                {Object.entries(typeLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="form-label">Filter by Request</label>
+                            <input type="text" className="form-input" placeholder="Search by ID..." value={storyFilter} onChange={e => { setStoryFilter(e.target.value); setOffset(0); }} />
+                        </div>
+                        <div>
+                            <label className="form-label">Time Period</label>
+                            <select className="form-select" value={dateFilter} onChange={e => { setDateFilter(e.target.value); setOffset(0); }}>
+                                <option value="all">All Time</option>
+                                <option value="today">Today</option>
+                                <option value="week">Last 7 Days</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {loading ? <div style={{textAlign:'center',color:'#94a3b8',padding:24}}>Loading...</div>
+                    : activities.length === 0 ? (
+                        <div className="empty-state">
+                            <div className="empty-icon">📋</div>
+                            <div className="empty-title">No activity found</div>
+                            <div className="empty-desc">Try adjusting your filters or submit a new request to see activity here.</div>
+                        </div>
+                    ) : (
+                        <div className="card">
+                            {activities.map((a, i) => (
+                                <div key={i} className="activity-item">
+                                    <div className="activity-icon">{ACTIVITY_ICONS[a.type] || '•'}</div>
+                                    <div className="activity-content">
+                                        <div className="activity-title">{a.title}</div>
+                                        <div className="activity-detail">{a.detail}</div>
+                                        <div className="activity-time">
+                                            {a.story_id && <a className="activity-link" href="#" onClick={e => e.preventDefault()}>{a.story_id}</a>}
+                                            {' '}{new Date(a.timestamp).toLocaleString()}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            {activities.length >= 50 && (
+                                <button className="btn btn-secondary btn-full" style={{marginTop:16}} onClick={() => setOffset(offset + 50)}>Load More</button>
+                            )}
+                        </div>
+                    )}
+                </div></div>
+            );
+        }
+
+        /* ══════════════════════════════════════════════════════════
+           FEEDBACK
+           ══════════════════════════════════════════════════════════ */
+        function FeedbackPage({ showToast }) {
+            const [stories, setStories] = useState([]);
+            const [selectedStory, setSelectedStory] = useState('');
+            const [feedbackType, setFeedbackType] = useState('guidance');
+            const [message, setMessage] = useState('');
+            const [history, setHistory] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [submitting, setSubmitting] = useState(false);
+
+            useEffect(() => {
+                (async () => {
+                    try { setLoading(true); const d = await apiCall('GET', '/instructions'); setStories(Array.isArray(d) ? d : d.instructions || []); }
+                    catch { showToast('Error', 'Could not load requests', 'error'); }
+                    finally { setLoading(false); }
+                })();
+            }, []);
+
+            useEffect(() => {
+                if (selectedStory) {
+                    (async () => {
+                        try { const d = await apiCall('GET', `/feedback/${selectedStory}`); setHistory(Array.isArray(d) ? d : d.feedback || []); }
+                        catch { setHistory([]); }
+                    })();
+                }
+            }, [selectedStory]);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                if (!selectedStory || !message.trim()) { showToast('Missing Info', 'Please pick a request and write a message', 'error'); return; }
+                try {
+                    setSubmitting(true);
+                    await apiCall('POST', '/feedback', { story_id: selectedStory, feedback_type: feedbackType, message });
+                    showToast('Sent!', 'Your feedback was sent to the agent', 'success');
+                    setMessage(''); setFeedbackType('guidance');
+                    const d = await apiCall('GET', `/feedback/${selectedStory}`);
+                    setHistory(Array.isArray(d) ? d : d.feedback || []);
+                } catch { showToast('Error', 'Could not send feedback', 'error'); }
+                finally { setSubmitting(false); }
+            };
+
+            const feedbackTypes = [
+                { v: 'guidance', icon: '💡', l: 'Guidance', d: 'Point the agent in the right direction' },
+                { v: 'correction', icon: '✏️', l: 'Correction', d: 'Something needs to be changed' },
+                { v: 'approval', icon: '✅', l: 'Looks Good', d: 'Confirm the agent is on track' },
+                { v: 'abort', icon: '🛑', l: 'Stop Work', d: 'Cancel this request' }
+            ];
+
+            return (
+                <div className="content"><div className="content-inner">
+                    <div className="page-title">Send Feedback</div>
+                    <div className="page-subtitle">Guide the agent while it works on your requests</div>
+
+                    <form onSubmit={handleSubmit} style={{maxWidth:600,marginBottom:32}}>
+                        <div className="form-group">
+                            <label className="form-label">Which request?</label>
+                            <select className="form-select" value={selectedStory} onChange={e => setSelectedStory(e.target.value)}>
+                                <option value="">Choose a request...</option>
+                                {stories.map(s => (
+                                    <option key={s.instruction_id} value={s.instruction_id}>{s.title || s.instruction_id}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">What kind of feedback?</label>
+                            <div className="type-grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(120px, 1fr))'}}>
+                                {feedbackTypes.map(t => (
+                                    <div key={t.v} className={`type-card ${feedbackType === t.v ? 'selected' : ''}`} onClick={() => setFeedbackType(t.v)} style={{padding:12}}>
+                                        <div style={{fontSize:18,marginBottom:2}}>{t.icon}</div>
+                                        <div style={{fontSize:13,fontWeight:600}}>{t.l}</div>
+                                        <div style={{fontSize:11,color:'#64748b',marginTop:2}}>{t.d}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Your message</label>
+                            <textarea className="form-textarea" placeholder="Tell the agent what to do differently..." value={message} onChange={e => setMessage(e.target.value)} />
+                        </div>
+
+                        <button type="submit" className="btn btn-primary btn-full" disabled={submitting}>
+                            {submitting ? 'Sending...' : '📨 Send Feedback'}
+                        </button>
+                    </form>
+
+                    {selectedStory && (
+                        <div>
+                            <div className="section-title">Previous Feedback</div>
+                            {history.length === 0 ? (
+                                <div style={{textAlign:'center',color:'#94a3b8',padding:24}}>No feedback sent for this request yet.</div>
+                            ) : history.map((fb, i) => (
+                                <div key={i} className="card">
+                                    <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+                                        <span style={{fontWeight:600,textTransform:'capitalize',color:'#6366f1',fontSize:13}}>{fb.feedback_type}</span>
+                                        <span style={{fontSize:12,color:'#94a3b8'}}>{new Date(fb.created_at).toLocaleString()}</span>
+                                    </div>
+                                    <div style={{color:'#334155',fontSize:14}}>{fb.message}</div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div></div>
+            );
+        }
+
+        /* ══════════════════════════════════════════════════════════
+           PROJECTS PAGE
+           ══════════════════════════════════════════════════════════ */
+        function ProjectsPage({ showToast }) {
+            const [projects, setProjects] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [showModal, setShowModal] = useState(false);
+            const [editProject, setEditProject] = useState(null);
+            const [name, setName] = useState('');
+            const [description, setDescription] = useState('');
+            const [color, setColor] = useState('#6366f1');
+
+            const colors = ['#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6','#8b5cf6','#ef4444','#06b6d4'];
+
+            const loadProjects = async () => {
+                try {
+                    setLoading(true);
+                    const data = await apiCall('GET', '/projects');
+                    setProjects(data);
+                } catch { showToast('Error', 'Failed to load projects', 'error'); }
+                finally { setLoading(false); }
+            };
+            useEffect(() => { loadProjects(); }, []);
+
+            const openCreate = () => { setEditProject(null); setName(''); setDescription(''); setColor('#6366f1'); setShowModal(true); };
+            const openEdit = (proj) => { setEditProject(proj); setName(proj.name); setDescription(proj.description || ''); setColor(proj.color || '#6366f1'); setShowModal(true); };
+
+            const handleSave = async () => {
+                if (!name.trim()) { showToast('Missing Info', 'Please enter a project name', 'error'); return; }
+                try {
+                    if (editProject) {
+                        await apiCall('PUT', `/projects/${editProject.id}`, { name, description, color });
+                        showToast('Updated', `Project "${name}" updated`, 'success');
+                    } else {
+                        await apiCall('POST', '/projects', { name, description, color });
+                        showToast('Created', `Project "${name}" created`, 'success');
+                    }
+                    setShowModal(false);
+                    loadProjects();
+                } catch { showToast('Error', 'Failed to save project', 'error'); }
+            };
+
+            const handleDelete = async (proj) => {
+                if (!confirm(`Delete project "${proj.name}"? Requests in this project will become unassigned.`)) return;
+                try {
+                    await apiCall('DELETE', `/projects/${proj.id}`);
+                    showToast('Deleted', `Project "${proj.name}" deleted`, 'success');
+                    loadProjects();
+                } catch { showToast('Error', 'Failed to delete project', 'error'); }
+            };
+
+            return (
+                <div className="content"><div className="content-inner">
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                        <div>
+                            <div className="page-title">Projects</div>
+                            <div className="page-subtitle">Organize your requests into projects</div>
+                        </div>
+                        <button className="btn btn-primary" onClick={openCreate}>+ New Project</button>
+                    </div>
+
+                    {loading ? (
+                        <div style={{marginTop:24}}>
+                            <div className="skeleton skeleton-card" style={{height:120}}></div>
+                            <div className="skeleton skeleton-card" style={{height:120}}></div>
+                        </div>
+                    ) : projects.length === 0 ? (
+                        <div style={{textAlign:'center',padding:'60px 20px',color:'#94a3b8'}}>
+                            <div style={{fontSize:48,marginBottom:12}}>📁</div>
+                            <div style={{fontSize:16,fontWeight:500,color:'#64748b'}}>No projects yet</div>
+                            <div style={{fontSize:14,marginTop:4}}>Create a project to start organizing your requests</div>
+                            <button className="btn btn-primary" style={{marginTop:16}} onClick={openCreate}>+ Create Your First Project</button>
+                        </div>
+                    ) : (
+                        <div className="project-grid">
+                            {projects.map(proj => (
+                                <div key={proj.id} className="project-card">
+                                    <div className="project-card-stripe" style={{background:proj.color || '#6366f1'}}></div>
+                                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                                        <div className="project-card-name">{proj.name}</div>
+                                        <div style={{display:'flex',gap:4}}>
+                                            <button className="btn btn-secondary btn-sm" onClick={() => openEdit(proj)} style={{padding:'4px 8px',fontSize:11}}>Edit</button>
+                                            <button className="btn btn-danger btn-sm" onClick={() => handleDelete(proj)} style={{padding:'4px 8px',fontSize:11}}>Delete</button>
+                                        </div>
+                                    </div>
+                                    {proj.description && <div className="project-card-desc">{proj.description}</div>}
+                                    <div className="project-card-meta">
+                                        <span>{proj.request_count} request{proj.request_count !== 1 ? 's' : ''}</span>
+                                        <span>Created {new Date(proj.created_at).toLocaleDateString()}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {showModal && (
+                        <div className="project-modal-overlay" onClick={() => setShowModal(false)}>
+                            <div className="project-modal" onClick={e => e.stopPropagation()}>
+                                <h3>{editProject ? 'Edit Project' : 'New Project'}</h3>
+                                <div className="form-group">
+                                    <label className="form-label">Project Name</label>
+                                    <input type="text" className="form-input" placeholder="e.g., Mobile App, Backend API" value={name} onChange={e => setName(e.target.value)} autoFocus />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Description</label>
+                                    <textarea className="form-textarea" placeholder="What is this project about?" value={description} onChange={e => setDescription(e.target.value)} style={{minHeight:80}} />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Color</label>
+                                    <div className="color-picker">
+                                        {colors.map(c => (
+                                            <div key={c} className={`color-swatch ${color === c ? 'selected' : ''}`} style={{background:c}} onClick={() => setColor(c)}></div>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:20}}>
+                                    <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
+                                    <button className="btn btn-primary" onClick={handleSave}>{editProject ? 'Save Changes' : 'Create Project'}</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div></div>
+            );
+        }
+
+        /* ══════════════════════════════════════════════════════════
+           APP SHELL
+           ══════════════════════════════════════════════════════════ */
+        function App() {
+            const [page, setPage] = useState('submit');
+            const [connStatus, setConnStatus] = useState(true);
+            const [stats, setStats] = useState({ active_stories: 0, pending_approvals: 0 });
+            const [currentUser, setCurrentUser] = useState(null);
+            const [userMenuOpen, setUserMenuOpen] = useState(false);
+            const { toasts, showToast } = useToast();
+
+            // Load current user
+            useEffect(() => {
+                fetch('/auth/me', { credentials: 'include' })
+                    .then(r => r.ok ? r.json() : null)
+                    .then(u => { if (u) setCurrentUser(u); })
+                    .catch(() => {});
+            }, []);
+
+            useEffect(() => {
+                const check = async () => { try { setConnStatus((await fetch('/health')).ok); } catch { setConnStatus(false); } };
+                check(); const iv = setInterval(check, 10000); return () => clearInterval(iv);
+            }, []);
+
+            useEffect(() => {
+                const load = async () => { try { setStats(await apiCall('GET', '/dashboard')); } catch {} };
+                load(); const iv = setInterval(load, 30000); return () => clearInterval(iv);
+            }, []);
+
+            const handleLogout = async () => {
+                try {
+                    await fetch('/auth/logout', { method: 'POST', credentials: 'include' });
+                } catch {}
+                window.location.href = '/login';
+            };
+
+            const navItems = [
+                { key: 'submit', icon: '✨', label: 'New Request' },
+                { key: 'projects', icon: '📁', label: 'Projects' },
+                { key: 'dashboard', icon: '📊', label: 'Stats' },
+                { key: 'stories', icon: '📂', label: 'My Requests' },
+                { key: 'approvals', icon: '🔔', label: 'Review & Approve', badge: stats.pending_approvals },
+                { key: 'activity', icon: '📋', label: 'Activity Log' },
+                { key: 'feedback', icon: '💬', label: 'Send Feedback' }
+            ];
+
+            return (
+                <>
+                    <div className="header">
+                        <div className="header-left">
+                            <div className="logo">
+                                <div className="logo-icon">D</div>
+                                DevAgent
+                            </div>
+                            <div className="connection-badge">
+                                <div className={`conn-dot ${connStatus ? '' : 'offline'}`} />
+                                {connStatus ? 'Connected' : 'Offline'}
+                            </div>
+                        </div>
+                        <div className="header-right">
+                            <div className="header-stat">📂 Active: <strong>{stats.active_stories || 0}</strong></div>
+                            <div className="header-stat">
+                                🔔 Approvals:
+                                {stats.pending_approvals > 0 ? <span className="notif-badge">{stats.pending_approvals}</span> : <strong>0</strong>}
+                            </div>
+                            {currentUser && (
+                                <div style={{position:'relative',marginLeft:8}}>
+                                    <div onClick={() => setUserMenuOpen(!userMenuOpen)} style={{
+                                        display:'flex',alignItems:'center',gap:8,cursor:'pointer',
+                                        padding:'4px 10px',borderRadius:8,background:userMenuOpen?'#f1f5f9':'transparent',
+                                        transition:'background 0.15s'
+                                    }}>
+                                        {currentUser.avatar_url ? (
+                                            <img src={currentUser.avatar_url} alt="" style={{width:28,height:28,borderRadius:'50%',objectFit:'cover'}} />
+                                        ) : (
+                                            <div style={{width:28,height:28,borderRadius:'50%',background:'#6366f1',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700}}>
+                                                {(currentUser.display_name || currentUser.email || '?')[0].toUpperCase()}
+                                            </div>
+                                        )}
+                                        <span style={{fontSize:13,fontWeight:500,color:'#334155',maxWidth:120,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                                            {currentUser.display_name || currentUser.email}
+                                        </span>
+                                        <span style={{fontSize:10,color:'#94a3b8'}}>▼</span>
+                                    </div>
+                                    {userMenuOpen && (
+                                        <div style={{
+                                            position:'absolute',right:0,top:'100%',marginTop:4,
+                                            background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,
+                                            boxShadow:'0 4px 12px rgba(0,0,0,0.08)',minWidth:200,zIndex:100,
+                                            overflow:'hidden'
+                                        }}>
+                                            <div style={{padding:'12px 16px',borderBottom:'1px solid #f1f5f9'}}>
+                                                <div style={{fontSize:13,fontWeight:600,color:'#0f172a'}}>{currentUser.display_name}</div>
+                                                <div style={{fontSize:12,color:'#64748b'}}>{currentUser.email}</div>
+                                                <div style={{fontSize:11,color:'#94a3b8',marginTop:2,textTransform:'capitalize'}}>
+                                                    via {currentUser.provider}
+                                                </div>
+                                            </div>
+                                            <div onClick={handleLogout} style={{
+                                                padding:'10px 16px',cursor:'pointer',fontSize:13,color:'#ef4444',
+                                                display:'flex',alignItems:'center',gap:8,
+                                                transition:'background 0.15s'
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.background='#fef2f2'}
+                                            onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                                                🚪 Sign Out
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="main-layout">
+                        <div className="sidebar">
+                            <div className="sidebar-section-label">Menu</div>
+                            {navItems.map(n => (
+                                <div key={n.key} className={`nav-item ${page === n.key ? 'active' : ''}`} onClick={() => setPage(n.key)}>
+                                    <span className="nav-icon">{n.icon}</span>
+                                    <span>{n.label}</span>
+                                    {n.badge > 0 && <span className="nav-badge">{n.badge}</span>}
+                                </div>
+                            ))}
+                        </div>
+
+                        {page === 'dashboard' && <DashboardPage showToast={showToast} onNavigate={setPage} />}
+                        {page === 'submit' && <NewRequestPage showToast={showToast} />}
+                        {page === 'projects' && <ProjectsPage showToast={showToast} />}
+                        {page === 'stories' && <MyRequestsPage showToast={showToast} />}
+                        {page === 'approvals' && <ApprovalsPage showToast={showToast} />}
+                        {page === 'activity' && <ActivityPage showToast={showToast} />}
+                        {page === 'feedback' && <FeedbackPage showToast={showToast} />}
+                    </div>
+
+                    <ToastContainer toasts={toasts} />
+                </>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
