@@ -119,6 +119,41 @@ class ObservabilityConfig(BaseModel):
     audit_log_enabled: bool = True
 
 
+class GraphifyConfig(BaseModel):
+    """Graphify integration — knowledge-graph-aware context retrieval.
+
+    When enabled, fastcoder builds and queries a graphify knowledge graph of
+    the target repo to provide cheaper, more relevant context to the LLM
+    instead of dumping whole files.
+
+    Disabled by default. Recommended only for repos larger than the
+    `min_corpus_words` threshold, where graph-query costs are amortized
+    across many iterations.
+
+    See: https://github.com/safishamsi/graphify
+    """
+
+    enabled: bool = False
+    """Master switch. Default: off."""
+
+    min_corpus_words: int = 50_000
+    """Only build a graph when the target repo exceeds this word count.
+    Below this threshold, graphify overhead outweighs token savings."""
+
+    auto_rebuild_on_commit: bool = False
+    """If true, install a git post-commit hook to keep the graph fresh."""
+
+    semantic_extraction: bool = True
+    """If false, run AST-only extraction (no LLM tokens spent on the graph
+    itself). AST-only is faster and free but produces a thinner graph."""
+
+    query_token_budget: int = 2000
+    """Max tokens returned per context query against the graph."""
+
+    cache_dir: str = ".fastcoder/graphify"
+    """Where to persist graph.json, manifest, and incremental cache."""
+
+
 class ProjectConfig(BaseModel):
     project_id: str = "default"
     project_dir: str = "."
@@ -136,3 +171,4 @@ class AgentConfig(BaseModel):
     safety: SafetyConfig = Field(default_factory=SafetyConfig)
     quality: QualityConfig = Field(default_factory=QualityConfig)
     observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)
+    graphify: GraphifyConfig = Field(default_factory=GraphifyConfig)

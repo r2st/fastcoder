@@ -16,6 +16,7 @@ from fastcoder.types.config import (
     AgentConfig,
     CostConfig,
     GitToolsConfig,
+    GraphifyConfig,
     LLMConfig,
     ModelConfig,
     ObservabilityConfig,
@@ -674,6 +675,78 @@ def create_admin_router(config_holder: dict) -> APIRouter:
             _persist_config_non_secret(config)
             return config.observability.model_dump()
 
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=f"Invalid config: {str(e)}")
+
+    # GET /config/graphify - return GraphifyConfig
+    @router.get("/config/graphify", response_model=dict)
+    async def get_graphify_config() -> dict:
+        """Get GraphifyConfig.
+
+        Returns:
+            GraphifyConfig as dict, plus runtime status fields:
+              - installed: whether the `graphify` package is importable
+        """
+        config = config_holder.get("config")
+        if not config:
+            raise HTTPException(status_code=500, detail="Config not initialized")
+
+        try:
+            import graphify  # noqa: F401
+            installed = True
+        except ImportError:
+            installed = False
+
+        return {
+            **config.graphify.model_dump(),
+            "installed": installed,
+        }
+
+    # PUT /config/graphify - update GraphifyConfig
+    @router.put("/config/graphify", response_model=dict)
+    async def update_graphify_config(body: dict) -> dict:
+        """Update GraphifyConfig.
+
+        Args:
+            body: Dict with graphify config updates (enabled, min_corpus_words,
+                  auto_rebuild_on_commit, semantic_extraction, query_token_budget,
+                  cache_dir).
+
+        Returns:
+            Updated GraphifyConfig as dict.
+
+        Raises:
+            HTTPException: 400 if update fails or graphify package is not
+                           installed when enabling.
+        """
+        try:
+            config = config_holder.get("config")
+            if not config:
+                raise HTTPException(status_code=500, detail="Config not initialized")
+
+            # Block enable if package missing — prevents silent no-op at runtime.
+            if body.get("enabled") is True:
+                try:
+                    import graphify  # noqa: F401
+                except ImportError:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            "Graphify package not installed. "
+                            "Run: pip install 'fastcoder[graphify]'"
+                        ),
+                    )
+
+            # Merge with existing — strip runtime-only fields the client may echo back.
+            graphify_dict = config.graphify.model_dump()
+            graphify_dict.update({k: v for k, v in body.items() if k != "installed"})
+            config.graphify = GraphifyConfig(**graphify_dict)
+
+            _persist_config_non_secret(config)
+            return config.graphify.model_dump()
+
+        except HTTPException:
+            raise
         except ValueError as e:
             raise HTTPException(status_code=400, detail=f"Invalid config: {str(e)}")
 

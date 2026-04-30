@@ -924,6 +924,12 @@
                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
                 </svg>
             ),
+            graphify: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/>
+                    <line x1="9" y1="6" x2="15" y2="6"/><line x1="6" y1="9" x2="6" y2="15"/><line x1="18" y1="9" x2="18" y2="15"/><line x1="9" y1="18" x2="15" y2="18"/><line x1="8.1" y1="8.1" x2="15.9" y2="15.9"/>
+                </svg>
+            ),
             stories: (
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -2082,6 +2088,124 @@
         };
 
         /* ═══════════════════════════════════════════════════════
+           GRAPHIFY (knowledge-graph context retrieval)
+           ═══════════════════════════════════════════════════════ */
+        const Graphify = () => {
+            const [config, setConfig] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [saving, setSaving] = useState(false);
+
+            useEffect(() => {
+                api.get('/api/v1/admin/config/graphify').then(setConfig).catch(() => window.showToast('Failed to load Graphify config', 'error')).finally(() => setLoading(false));
+            }, []);
+
+            const handleToggle = (field) => setConfig(prev => ({ ...prev, [field]: !prev[field] }));
+            const handleNumber = (field) => (e) => {
+                const v = parseInt(e.target.value, 10);
+                setConfig(prev => ({ ...prev, [field]: isNaN(v) ? prev[field] : v }));
+            };
+            const handleText = (field) => (e) => setConfig(prev => ({ ...prev, [field]: e.target.value }));
+
+            const handleSave = async () => {
+                try {
+                    setSaving(true);
+                    const { installed, ...payload } = config;
+                    const updated = await api.put('/api/v1/admin/config/graphify', payload);
+                    setConfig({ ...updated, installed });
+                    window.showToast('Graphify settings saved', 'success');
+                } catch (err) {
+                    const msg = err && err.message ? err.message : 'Failed to save';
+                    window.showToast(msg, 'error');
+                } finally {
+                    setSaving(false);
+                }
+            };
+
+            if (loading) return <SkeletonLoader />;
+            if (!config) return (<div className="page-fade"><div className="empty-state"><div className="empty-state-icon">{Icons.graphify}</div><div className="empty-state-title">Configuration unavailable</div><div className="empty-state-text">Could not load Graphify settings.</div></div></div>);
+
+            return (
+                <div className="page-fade">
+                    <div className="page-header">
+                        <h1 className="page-title">Graphify</h1>
+                        <p className="page-subtitle">
+                            Knowledge-graph-aware context retrieval. When enabled, fastcoder builds and queries a graphify graph
+                            of your target repo to provide cheaper, more relevant context to the LLM. Recommended only for
+                            large repos. <strong>Off by default.</strong>{' '}
+                            <a href="https://github.com/safishamsi/graphify" target="_blank" rel="noopener noreferrer">Learn more</a>
+                        </p>
+                    </div>
+
+                    {!config.installed && (
+                        <div className="settings-group" style={{borderLeft: '3px solid #f59e0b', paddingLeft: '0.75rem'}}>
+                            <div className="settings-group-title" style={{color: '#f59e0b'}}>Package not installed</div>
+                            <div className="settings-item-description" style={{padding: '0.5rem 0'}}>
+                                Install with: <code>pip install 'fastcoder[graphify]'</code>. You can adjust settings now,
+                                but enabling will be blocked until the package is available.
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="settings-group">
+                        <div className="settings-group-title">Master switch</div>
+                        <div className="settings-item">
+                            <div className="settings-item-content">
+                                <div className="settings-item-label">Enable Graphify</div>
+                                <div className="settings-item-description">When off, fastcoder uses its built-in codebase indexer only. No graph is built.</div>
+                            </div>
+                            <div className={`toggle-switch ${config.enabled ? 'active' : ''}`} onClick={() => handleToggle('enabled')} style={{cursor: 'pointer'}}></div>
+                        </div>
+                    </div>
+
+                    <div className="settings-group">
+                        <div className="settings-group-title">Build behavior</div>
+                        <div className="settings-item">
+                            <div className="settings-item-content">
+                                <div className="settings-item-label">Minimum corpus size (words)</div>
+                                <div className="settings-item-description">Only build a graph when the target repo exceeds this word count. Below this, overhead outweighs token savings.</div>
+                            </div>
+                            <input type="number" className="form-input" style={{width: '120px'}} min="0" step="1000" value={config.min_corpus_words} onChange={handleNumber('min_corpus_words')} />
+                        </div>
+                        <div className="settings-item">
+                            <div className="settings-item-content">
+                                <div className="settings-item-label">Semantic extraction</div>
+                                <div className="settings-item-description">Use the LLM to find semantic edges (richer graph, costs tokens). Off = AST-only (free but thinner).</div>
+                            </div>
+                            <div className={`toggle-switch ${config.semantic_extraction ? 'active' : ''}`} onClick={() => handleToggle('semantic_extraction')} style={{cursor: 'pointer'}}></div>
+                        </div>
+                        <div className="settings-item">
+                            <div className="settings-item-content">
+                                <div className="settings-item-label">Auto-rebuild on commit</div>
+                                <div className="settings-item-description">Install a git post-commit hook that incrementally updates the graph after every commit.</div>
+                            </div>
+                            <div className={`toggle-switch ${config.auto_rebuild_on_commit ? 'active' : ''}`} onClick={() => handleToggle('auto_rebuild_on_commit')} style={{cursor: 'pointer'}}></div>
+                        </div>
+                    </div>
+
+                    <div className="settings-group">
+                        <div className="settings-group-title">Query</div>
+                        <div className="settings-item">
+                            <div className="settings-item-content">
+                                <div className="settings-item-label">Query token budget</div>
+                                <div className="settings-item-description">Maximum tokens returned per context query against the graph.</div>
+                            </div>
+                            <input type="number" className="form-input" style={{width: '120px'}} min="100" step="100" value={config.query_token_budget} onChange={handleNumber('query_token_budget')} />
+                        </div>
+                        <div className="settings-item">
+                            <div className="settings-item-content">
+                                <div className="settings-item-label">Cache directory</div>
+                                <div className="settings-item-description">Where graph.json, manifest, and incremental cache are persisted.</div>
+                            </div>
+                            <input type="text" className="form-input" style={{width: '240px'}} value={config.cache_dir} onChange={handleText('cache_dir')} />
+                        </div>
+                    </div>
+
+                    <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save Settings'}</button>
+                </div>
+            );
+        };
+
+        /* ═══════════════════════════════════════════════════════
            STORIES
            ═══════════════════════════════════════════════════════ */
         const Stories = () => {
@@ -2614,13 +2738,14 @@
                 safety: { label: 'Safety', component: SafetyApprovals, icon: Icons.safety, section: 'Configuration' },
                 quality: { label: 'Quality Gates', component: QualityGates, icon: Icons.quality, section: 'Configuration' },
                 observability: { label: 'Observability', component: Observability, icon: Icons.observability, section: 'Configuration' },
+                graphify: { label: 'Graphify', component: Graphify, icon: Icons.graphify, section: 'Configuration' },
                 stories: { label: 'Stories', component: Stories, icon: Icons.stories, section: 'Operations' },
                 auth: { label: 'Auth & Users', component: Authentication, icon: Icons.auth, section: 'Access' }
             };
 
             const navSections = [
                 { label: 'Overview', items: ['dashboard'] },
-                { label: 'Configuration', items: ['environment', 'project', 'llm', 'routing', 'cost', 'safety', 'quality', 'observability'] },
+                { label: 'Configuration', items: ['environment', 'project', 'llm', 'routing', 'cost', 'safety', 'quality', 'observability', 'graphify'] },
                 { label: 'Operations', items: ['stories'] },
                 { label: 'Access', items: ['auth'] }
             ];
