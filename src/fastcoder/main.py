@@ -113,9 +113,15 @@ def _initialize_components(
     # 4. Initialize Context Manager
     try:
         logger.info("initializing_context_manager")
-        context_manager = ContextManager()
+        context_manager = ContextManager(
+            graphify_config=config.graphify,
+            project_dir=config.project.project_dir,
+        )
         components["context_manager"] = context_manager
-        logger.info("context_manager_initialized")
+        logger.info(
+            "context_manager_initialized",
+            graphify_enabled=config.graphify.enabled,
+        )
     except Exception as e:
         logger.warning("context_manager_initialization_failed", error=str(e))
         components["context_manager"] = None

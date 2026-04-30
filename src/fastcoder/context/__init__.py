@@ -18,7 +18,9 @@ import re
 from dataclasses import dataclass
 from typing import Optional
 
+from fastcoder.context.graphify_provider import GraphifyProvider
 from fastcoder.types.codebase import ProjectProfile
+from fastcoder.types.config import GraphifyConfig
 from fastcoder.types.errors import ErrorContext
 from fastcoder.types.llm import Message
 from fastcoder.types.memory import MemoryEntry
@@ -69,16 +71,35 @@ class ContextManager:
         self,
         budget: Optional[TokenBudget] = None,
         tokens_per_char: float = 0.25,
+        graphify_config: Optional[GraphifyConfig] = None,
+        project_dir: Optional[str] = None,
     ):
         """Initialize context manager.
 
         Args:
             budget: Token budget allocation (uses defaults if None)
             tokens_per_char: Estimation factor (~4 chars per token)
+            graphify_config: Optional Graphify configuration. When enabled,
+                the manager will consult a knowledge graph of the target
+                repo to provide cheaper, more relevant code context.
+                When None or disabled, the legacy file-dump path is used.
+            project_dir: Target project directory. Required when
+                graphify_config.enabled is True.
         """
         self.budget = budget or TokenBudget()
         self.tokens_per_char = tokens_per_char
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
+        # Set up graphify provider lazily — it does no work until queried.
+        self._graphify: Optional[GraphifyProvider] = None
+        if graphify_config is not None and graphify_config.enabled:
+            if project_dir is None:
+                self.logger.warning(
+                    "Graphify enabled in config but no project_dir provided; "
+                    "falling back to legacy context."
+                )
+            else:
+                self._graphify = GraphifyProvider(graphify_config, project_dir)
 
     async def build_context(
         self,
@@ -128,10 +149,14 @@ class ContextManager:
             messages.append(task_msg)
             token_usage["tokens"] += self.estimate_tokens(task_msg.content)
 
-        # 5. Code layer (may be truncated)
+        # 5. Code layer (may be truncated). When Graphify is enabled, this
+        # consults the knowledge graph for relevant context first and
+        # falls back to the legacy file-dump path on miss.
+        graphify_query = self._compose_graphify_query(story, task)
         code_msg = await self._build_code_message(
             relevant_files,
             self.budget.code,
+            graphify_query=graphify_query,
         )
         if code_msg and token_usage["tokens"] + self.estimate_tokens(code_msg.content) <= self.budget.total:
             messages.append(code_msg)
@@ -247,14 +272,44 @@ Estimated Tokens: {task.estimated_tokens}"""
         self,
         relevant_files: list[str],
         budget: int,
+        graphify_query: Optional[str] = None,
     ) -> Optional[Message]:
-        """Build code context layer with smart file selection."""
-        if not relevant_files:
+        """Build code context layer with smart file selection.
+
+        When Graphify is enabled and a graphify_query is provided, the graph
+        is queried first and the result is prepended to the file-dump
+        context. Files remain useful for line-level detail; the graph
+        provides the relationships and cross-cutting structure.
+        """
+        graph_block: Optional[str] = None
+        remaining_budget = budget
+
+        if graphify_query and self._graphify is not None and self._graphify.is_available():
+            try:
+                graph_block = self._graphify.query_context(graphify_query)
+            except Exception as e:  # pragma: no cover — defensive
+                self.logger.debug("graphify query failed, falling back to files: %s", e)
+                graph_block = None
+            if graph_block:
+                graph_tokens = self.estimate_tokens(graph_block)
+                if graph_tokens >= remaining_budget:
+                    # Graph block alone fills the budget — return as-is.
+                    return Message(
+                        role="user",
+                        content="Relevant Code Context:\n\n" + graph_block,
+                    )
+                remaining_budget -= graph_tokens
+                self.logger.info(
+                    "graphify: injected %d-token graph context (%d budget remaining for files)",
+                    graph_tokens,
+                    remaining_budget,
+                )
+
+        if not relevant_files and graph_block is None:
             return None
 
-        code_snippets = []
-        remaining_budget = budget
-        processed_files = set()
+        code_snippets: list[str] = []
+        processed_files: set[str] = set()
 
         for file_path in relevant_files:
             if remaining_budget <= 100:  # Reserve space
@@ -285,11 +340,36 @@ Estimated Tokens: {task.estimated_tokens}"""
             except Exception as e:
                 self.logger.debug(f"Could not load file {file_path}: {e}")
 
-        if not code_snippets:
+        if not code_snippets and graph_block is None:
             return None
 
-        content = "Relevant Code Context:\n\n" + "\n\n".join(code_snippets)
+        sections: list[str] = []
+        if graph_block:
+            sections.append(graph_block)
+        if code_snippets:
+            sections.append("Relevant files:\n\n" + "\n\n".join(code_snippets))
+
+        content = "Relevant Code Context:\n\n" + "\n\n".join(sections)
         return Message(role="user", content=content)
+
+    def _compose_graphify_query(self, story: StorySpec, task: PlanTask) -> str:
+        """Compose a free-text query string from story + task for graphify.
+
+        Combines the story description, task description, and task targets
+        into one search string. Stays short to avoid the graph dragging in
+        too much when terms are noisy.
+        """
+        parts: list[str] = []
+        if getattr(story, "title", None):
+            parts.append(str(story.title))
+        if getattr(story, "description", None):
+            parts.append(str(story.description))
+        if getattr(task, "description", None):
+            parts.append(str(task.description))
+        targets = getattr(task, "targets", None) or []
+        if targets:
+            parts.append(" ".join(str(t) for t in targets))
+        return " ".join(parts).strip()
 
     def _build_error_message(self, error_context: ErrorContext) -> Message:
         """Build error context layer (on retries)."""
